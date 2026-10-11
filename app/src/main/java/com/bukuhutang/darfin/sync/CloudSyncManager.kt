@@ -29,10 +29,12 @@ interface SyncListener {
 object CloudSyncManager {
     private const val TAG = "CloudSyncManager"
     private const val PREFS_NAME = "buku_hutang_cloud_prefs"
-    private const val KEY_SERVER_URL = "server_url"
-    
-    // Default fallback demo server URL (can be changed to Render or Supabase)
-    const val DEFAULT_SERVER_URL = "http://10.0.2.2:3000"
+    private const val KEY_SUPABASE_URL = "supabase_url"
+    private const val KEY_SUPABASE_KEY = "supabase_key"
+
+    // Default Supabase Cloud (Live & Active 24/7)
+    const val DEFAULT_SUPABASE_URL = "https://fislizbynjisvwwdflaq.supabase.co"
+    const val DEFAULT_SUPABASE_KEY = "sb_publishable_zp3e_lIVDWIQ9W8AKJ2kwg_35Mz9j3R"
 
     private val executor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -40,23 +42,33 @@ object CloudSyncManager {
 
     private var isSyncing = false
     private var isPollingActive = false
+    private var appContext: Context? = null
+
     private val pollRunnable = object : Runnable {
         override fun run() {
             if (isPollingActive) {
-                syncNow(null)
-                mainHandler.postDelayed(this, 6000) // Poll every 6 seconds
+                syncNow(appContext)
+                mainHandler.postDelayed(this, 6000) // Poll every 6 seconds for real-time sync
             }
         }
     }
 
-    fun getServerUrl(context: Context): String {
+    fun getSupabaseUrl(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
+        return prefs.getString(KEY_SUPABASE_URL, DEFAULT_SUPABASE_URL) ?: DEFAULT_SUPABASE_URL
     }
 
-    fun setServerUrl(context: Context, url: String) {
+    fun getSupabaseKey(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_SERVER_URL, url.trim().removeSuffix("/")).apply()
+        return prefs.getString(KEY_SUPABASE_KEY, DEFAULT_SUPABASE_KEY) ?: DEFAULT_SUPABASE_KEY
+    }
+
+    fun setSupabaseConfig(context: Context, url: String, key: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(KEY_SUPABASE_URL, url.trim().removeSuffix("/"))
+            .putString(KEY_SUPABASE_KEY, key.trim())
+            .apply()
     }
 
     fun addListener(listener: SyncListener) {
@@ -70,6 +82,7 @@ object CloudSyncManager {
     }
 
     fun startRealtimeSync(context: Context) {
+        appContext = context.applicationContext
         if (!isPollingActive) {
             isPollingActive = true
             mainHandler.post(pollRunnable)
@@ -83,6 +96,7 @@ object CloudSyncManager {
 
     fun syncNow(context: Context?, onComplete: ((success: Boolean, newCount: Int) -> Unit)? = null) {
         if (isSyncing) return
+        val ctx = context ?: appContext ?: return
         isSyncing = true
         notifyState(SyncStatus.SYNCING, "Sinkronisasi...")
 
@@ -91,50 +105,70 @@ object CloudSyncManager {
             var newCount = 0
 
             try {
-                val dbHelper = DebtDatabaseHelper(context ?: return@execute)
-                val targetUrl = getServerUrl(context) + "/api/sync"
+                val dbHelper = DebtDatabaseHelper(ctx)
+                val baseUrl = getSupabaseUrl(ctx)
+                val apiKey = getSupabaseKey(ctx)
 
-                // 1. Prepare pending transactions to upload
+                // 1. PUSH: Upload pending local transactions to Supabase PostgREST
                 val pendingList = dbHelper.getPendingSyncTransactions()
-                val pendingArray = JSONArray()
-                for (item in pendingList) {
-                    val obj = JSONObject().apply {
-                        put("uuid", item.uuid)
-                        put("debtorName", item.debtorName)
-                        put("canonicalKey", item.canonicalKey)
-                        put("amount", item.amount)
-                        put("type", item.type)
-                        put("note", item.note)
-                        put("createdAt", item.createdAt)
-                        put("timestamp", item.timestamp)
+                if (pendingList.isNotEmpty()) {
+                    val uploadArray = JSONArray()
+                    for (item in pendingList) {
+                        val obj = JSONObject().apply {
+                            put("uuid", item.uuid)
+                            put("debtor_name", item.debtorName)
+                            put("canonical_key", item.canonicalKey)
+                            put("amount", item.amount)
+                            put("type", item.type)
+                            put("note", item.note)
+                            put("created_at", item.createdAt)
+                            put("timestamp", item.timestamp)
+                        }
+                        uploadArray.put(obj)
                     }
-                    pendingArray.put(obj)
+
+                    val postUrl = URL("$baseUrl/rest/v1/transactions")
+                    val postConn = (postUrl.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"
+                        connectTimeout = 5000
+                        readTimeout = 5000
+                        doOutput = true
+                        doInput = true
+                        setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                        setRequestProperty("apikey", apiKey)
+                        setRequestProperty("Authorization", "Bearer $apiKey")
+                        setRequestProperty("Prefer", "resolution=merge-duplicates")
+                    }
+
+                    val writer = OutputStreamWriter(postConn.outputStream, "UTF-8")
+                    writer.write(uploadArray.toString())
+                    writer.flush()
+                    writer.close()
+
+                    val postCode = postConn.responseCode
+                    if (postCode in 200..299) {
+                        val uploadedUuids = pendingList.map { it.uuid }
+                        dbHelper.markTransactionsSynced(uploadedUuids)
+                    } else {
+                        Log.e(TAG, "Post to Supabase failed code: $postCode")
+                    }
+                    postConn.disconnect()
                 }
 
-                val payload = JSONObject().apply {
-                    put("transactions", pendingArray)
-                }
-
-                // 2. HTTP POST to Cloud Sync Server
-                val url = URL(targetUrl)
-                val conn = (url.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 4000
-                    readTimeout = 4000
-                    doOutput = true
-                    doInput = true
-                    setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                // 2. PULL: Fetch all transactions from Supabase
+                val getUrl = URL("$baseUrl/rest/v1/transactions?select=*&order=timestamp.asc")
+                val getConn = (getUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 5000
+                    readTimeout = 5000
                     setRequestProperty("Accept", "application/json")
+                    setRequestProperty("apikey", apiKey)
+                    setRequestProperty("Authorization", "Bearer $apiKey")
                 }
 
-                val writer = OutputStreamWriter(conn.outputStream, "UTF-8")
-                writer.write(payload.toString())
-                writer.flush()
-                writer.close()
-
-                val responseCode = conn.responseCode
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val reader = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8"))
+                val getCode = getConn.responseCode
+                if (getCode in 200..299) {
+                    val reader = BufferedReader(InputStreamReader(getConn.inputStream, "UTF-8"))
                     val sb = StringBuilder()
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
@@ -142,8 +176,7 @@ object CloudSyncManager {
                     }
                     reader.close()
 
-                    val resJson = JSONObject(sb.toString())
-                    val remoteArray = resJson.optJSONArray("allTransactions") ?: JSONArray()
+                    val remoteArray = JSONArray(sb.toString())
                     val remoteItems = mutableListOf<SyncTransactionDto>()
 
                     for (i in 0 until remoteArray.length()) {
@@ -151,22 +184,17 @@ object CloudSyncManager {
                         remoteItems.add(
                             SyncTransactionDto(
                                 uuid = obj.getString("uuid"),
-                                debtorName = obj.getString("debtorName"),
-                                canonicalKey = obj.getString("canonicalKey"),
+                                debtorName = obj.getString("debtor_name"),
+                                canonicalKey = obj.getString("canonical_key"),
                                 amount = obj.getLong("amount"),
                                 type = obj.getString("type"),
                                 note = obj.optString("note", ""),
-                                createdAt = obj.getString("createdAt"),
+                                createdAt = obj.getString("created_at"),
                                 timestamp = obj.getLong("timestamp")
                             )
                         )
                     }
 
-                    // Mark uploaded ones as synced
-                    val uploadedUuids = pendingList.map { it.uuid }
-                    dbHelper.markTransactionsSynced(uploadedUuids)
-
-                    // Merge remote items
                     newCount = dbHelper.mergeRemoteTransactions(remoteItems)
                     success = true
 
@@ -175,11 +203,12 @@ object CloudSyncManager {
                         notifyDataUpdated(newCount)
                     }
                 } else {
+                    Log.e(TAG, "Pull from Supabase failed code: $getCode")
                     notifyState(SyncStatus.OFFLINE, "Tersimpan Lokal")
                 }
-                conn.disconnect()
+                getConn.disconnect()
             } catch (e: Exception) {
-                Log.d(TAG, "Sync offline or network unreachable: ${e.message}")
+                Log.d(TAG, "Sync error: ${e.message}")
                 notifyState(SyncStatus.OFFLINE, "Tersimpan Lokal")
             } finally {
                 isSyncing = false

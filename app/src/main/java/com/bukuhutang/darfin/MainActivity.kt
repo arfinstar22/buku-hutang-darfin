@@ -285,28 +285,49 @@ class MainActivity : AppCompatActivity(), SyncListener {
     }
 
     private fun showCloudSettingsDialog() {
-        val currentUrl = CloudSyncManager.getServerUrl(this)
-        val input = EditText(this).apply {
-            setText(currentUrl)
-            hint = "http://192.168.1.5:3000 atau https://render-app.onrender.com"
-            setPadding(40, 30, 40, 30)
-            textSize = 15f
+        val currentUrl = CloudSyncManager.getSupabaseUrl(this)
+        val currentKey = CloudSyncManager.getSupabaseKey(this)
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(50, 20, 50, 20)
         }
+
+        val tvUrlLabel = TextView(this).apply { text = "Supabase Project URL:" }
+        val etUrl = EditText(this).apply {
+            setText(currentUrl)
+            hint = "https://xxx.supabase.co"
+        }
+
+        val tvKeyLabel = TextView(this).apply {
+            text = "Anon API Key:"
+            setPadding(0, 20, 0, 0)
+        }
+        val etKey = EditText(this).apply {
+            setText(currentKey)
+            hint = "sb_publishable_..."
+        }
+
+        layout.addView(tvUrlLabel)
+        layout.addView(etUrl)
+        layout.addView(tvKeyLabel)
+        layout.addView(etKey)
 
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.cloud_settings_title))
-            .setMessage("Masukkan URL server cloud untuk menghubungkan HP Tuan Darfin & HP Ibu:")
-            .setView(input)
-            .setPositiveButton("Simpan & Tes") { _, _ ->
-                val newUrl = input.text.toString().trim()
-                if (newUrl.isNotEmpty()) {
-                    CloudSyncManager.setServerUrl(this, newUrl)
-                    Toast.makeText(this, "URL disimpan. Menghubungkan...", Toast.LENGTH_SHORT).show()
+            .setMessage("Konfigurasi Cloud Supabase (Sinkronisasi HP Tuan Darfin & HP Ibu):")
+            .setView(layout)
+            .setPositiveButton("Simpan & Sinkron") { _, _ ->
+                val newUrl = etUrl.text.toString().trim()
+                val newKey = etKey.text.toString().trim()
+                if (newUrl.isNotEmpty() && newKey.isNotEmpty()) {
+                    CloudSyncManager.setSupabaseConfig(this, newUrl, newKey)
+                    Toast.makeText(this, "Pengaturan disimpan. Menghubungkan...", Toast.LENGTH_SHORT).show()
                     CloudSyncManager.syncNow(this) { success, _ ->
                         if (success) {
-                            Toast.makeText(this, "Berhasil terhubung ke cloud!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "Berhasil terhubung ke Supabase!", Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(this, "Server tidak merespons (Periksa URL)", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this, "Gagal terhubung ke Supabase", Toast.LENGTH_LONG).show()
                         }
                     }
                 }

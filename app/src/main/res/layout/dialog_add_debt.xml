@@ -2,6 +2,8 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog_surface"
+    android:elevation="8dp"
     android:orientation="vertical"
     android:padding="24dp">
 
@@ -19,6 +21,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
+        android:lineSpacingExtra="2dp"
         android:text="@string/dialog_input_hint"
         android:textColor="@color/text_secondary"
         android:textSize="14sp" />
@@ -27,7 +30,7 @@
     <EditText
         android:id="@+id/etInput"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="56dp"
         android:layout_marginTop="16dp"
         android:background="@drawable/bg_rounded_card"
         android:hint="Ketik di sini..."
@@ -35,7 +38,8 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:textColor="@color/text_primary"
-        android:textSize="18sp" />
+        android:textColorHint="@color/text_hint"
+        android:textSize="17sp" />
 
     <!-- Live Preview Card -->
     <TextView
@@ -61,21 +65,24 @@
             android:id="@+id/btnCancel"
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
-            android:layout_height="52dp"
+            android:layout_height="48dp"
             android:text="@string/btn_batal"
+            android:textAllCaps="false"
             android:textColor="@color/text_secondary"
-            android:textSize="16sp" />
+            android:textSize="15sp"
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/btnSave"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_width="wrap_content"
-            android:layout_height="52dp"
+            android:layout_height="48dp"
             android:layout_marginStart="8dp"
             android:backgroundTint="@color/primary"
             android:text="@string/btn_simpan"
+            android:textAllCaps="false"
             android:textColor="@color/white"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
     </LinearLayout>
 

@@ -170,6 +170,7 @@ class DetailActivity : AppCompatActivity(), SyncListener {
             .create()
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setDimAmount(0.65f)
 
         btnCancel.setOnClickListener { dialog.dismiss() }
 
@@ -222,6 +223,7 @@ class DetailActivity : AppCompatActivity(), SyncListener {
             .create()
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setDimAmount(0.65f)
 
         btnCancel.setOnClickListener { dialog.dismiss() }
 
@@ -274,6 +276,7 @@ class DetailActivity : AppCompatActivity(), SyncListener {
             .create()
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setDimAmount(0.65f)
 
         btnCancel.setOnClickListener { dialog.dismiss() }
 

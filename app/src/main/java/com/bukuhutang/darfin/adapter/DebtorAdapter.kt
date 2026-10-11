@@ -42,10 +42,20 @@ class DebtorAdapter(
         }
         holder.tvInitials.text = initials
 
-        // Last note & transaction count
-        val countText = if (item.transactionCount > 0) "${item.transactionCount} transaksi • " else ""
-        val noteText = item.lastNote.ifEmpty { "Catatan transaksi" }
-        holder.tvLastNote.text = "$countText$noteText"
+        // Last note & transaction count (Crisp, never truncated)
+        val note = item.lastNote.trim()
+        val count = item.transactionCount
+        val subtext = when {
+            count > 0 && note.isNotEmpty() && !note.equals("Catatan hutang", ignoreCase = true) && !note.equals("Catatan transaksi", ignoreCase = true) ->
+                "${count}x • $note"
+            count > 0 ->
+                "${count}x transaksi"
+            note.isNotEmpty() ->
+                note
+            else ->
+                "Belum ada catatan"
+        }
+        holder.tvLastNote.text = subtext
 
         val context = holder.itemView.context
         if (item.totalDebt > 0) {

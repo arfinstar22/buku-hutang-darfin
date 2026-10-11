@@ -181,8 +181,8 @@ class MainActivity : AppCompatActivity(), SyncListener {
         val (totalCount, unpaidCount, paidCount) = dbHelper.getDebtorCounts()
 
         tvGrandTotal.text = SmartDebtParser.formatRupiah(grandTotal)
-        tvDebtorCount.text = "$unpaidCount orang belum lunas"
-        tvSettledCount.text = "$paidCount orang lunas"
+        tvDebtorCount.text = "$unpaidCount belum lunas"
+        tvSettledCount.text = "$paidCount lunas"
 
         btnFilterAll.text = "Semua ($totalCount)"
         btnFilterUnpaid.text = "Belum Lunas ($unpaidCount)"
@@ -237,6 +237,7 @@ class MainActivity : AppCompatActivity(), SyncListener {
             .create()
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setDimAmount(0.65f)
 
         etInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}

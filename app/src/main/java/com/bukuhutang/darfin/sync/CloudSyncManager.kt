@@ -32,10 +32,12 @@ object CloudSyncManager {
     private const val PREFS_NAME = "buku_hutang_cloud_prefs"
     private const val KEY_SUPABASE_URL = "supabase_url"
     private const val KEY_SUPABASE_KEY = "supabase_key"
+    private const val KEY_SYNC_SECRET = "supabase_sync_secret"
 
     // Default Supabase Cloud (Live & Active 24/7)
     const val DEFAULT_SUPABASE_URL = "https://fislizbynjisvwwdflaq.supabase.co"
     const val DEFAULT_SUPABASE_KEY = "sb_publishable_zp3e_lIVDWIQ9W8AKJ2kwg_35Mz9j3R"
+    const val DEFAULT_SYNC_SECRET = "darfin_sync_secure_2026"
 
     private val executor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -64,11 +66,17 @@ object CloudSyncManager {
         return prefs.getString(KEY_SUPABASE_KEY, DEFAULT_SUPABASE_KEY) ?: DEFAULT_SUPABASE_KEY
     }
 
-    fun setSupabaseConfig(context: Context, url: String, key: String) {
+    fun getSyncSecret(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_SYNC_SECRET, DEFAULT_SYNC_SECRET) ?: DEFAULT_SYNC_SECRET
+    }
+
+    fun setSupabaseConfig(context: Context, url: String, key: String, secret: String = DEFAULT_SYNC_SECRET) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
             .putString(KEY_SUPABASE_URL, url.trim().removeSuffix("/"))
             .putString(KEY_SUPABASE_KEY, key.trim())
+            .putString(KEY_SYNC_SECRET, secret.trim())
             .apply()
     }
 
@@ -109,6 +117,7 @@ object CloudSyncManager {
                 val dbHelper = DebtDatabaseHelper(ctx)
                 val baseUrl = getSupabaseUrl(ctx)
                 val apiKey = getSupabaseKey(ctx)
+                val syncSecret = getSyncSecret(ctx)
 
                 // 1. PUSH: Upload pending local transactions to Supabase PostgREST
                 val pendingList = dbHelper.getPendingSyncTransactions()
@@ -138,6 +147,7 @@ object CloudSyncManager {
                         setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                         setRequestProperty("apikey", apiKey)
                         setRequestProperty("Authorization", "Bearer $apiKey")
+                        setRequestProperty("x-sync-secret", syncSecret)
                         setRequestProperty("Prefer", "resolution=merge-duplicates")
                     }
 
@@ -167,6 +177,7 @@ object CloudSyncManager {
                     setRequestProperty("Accept", "application/json")
                     setRequestProperty("apikey", apiKey)
                     setRequestProperty("Authorization", "Bearer $apiKey")
+                    setRequestProperty("x-sync-secret", syncSecret)
                 }
 
                 val getCode = getConn.responseCode

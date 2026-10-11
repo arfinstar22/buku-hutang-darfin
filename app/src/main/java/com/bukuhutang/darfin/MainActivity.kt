@@ -292,6 +292,7 @@ class MainActivity : AppCompatActivity(), SyncListener {
     private fun showCloudSettingsDialog() {
         val currentUrl = CloudSyncManager.getSupabaseUrl(this)
         val currentKey = CloudSyncManager.getSupabaseKey(this)
+        val currentSecret = CloudSyncManager.getSyncSecret(this)
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -313,10 +314,21 @@ class MainActivity : AppCompatActivity(), SyncListener {
             hint = "sb_publishable_..."
         }
 
+        val tvSecretLabel = TextView(this).apply {
+            text = "Kunci Rahasia Sync (PIN / Secret):"
+            setPadding(0, 20, 0, 0)
+        }
+        val etSecret = EditText(this).apply {
+            setText(currentSecret)
+            hint = "darfin_sync_secure_2026"
+        }
+
         layout.addView(tvUrlLabel)
         layout.addView(etUrl)
         layout.addView(tvKeyLabel)
         layout.addView(etKey)
+        layout.addView(tvSecretLabel)
+        layout.addView(etSecret)
 
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.cloud_settings_title))
@@ -325,8 +337,10 @@ class MainActivity : AppCompatActivity(), SyncListener {
             .setPositiveButton("Simpan & Sinkron") { _, _ ->
                 val newUrl = etUrl.text.toString().trim()
                 val newKey = etKey.text.toString().trim()
+                val newSecret = etSecret.text.toString().trim()
+                val validSecret = if (newSecret.isNotEmpty()) newSecret else CloudSyncManager.DEFAULT_SYNC_SECRET
                 if (newUrl.isNotEmpty() && newKey.isNotEmpty()) {
-                    CloudSyncManager.setSupabaseConfig(this, newUrl, newKey)
+                    CloudSyncManager.setSupabaseConfig(this, newUrl, newKey, validSecret)
                     Toast.makeText(this, "Pengaturan disimpan. Menghubungkan...", Toast.LENGTH_SHORT).show()
                     CloudSyncManager.syncNow(this) { success, _ ->
                         if (success) {

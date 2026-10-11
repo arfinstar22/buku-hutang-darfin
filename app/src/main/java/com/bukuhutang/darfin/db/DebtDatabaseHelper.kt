@@ -240,6 +240,64 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         db.insert(TABLE_TRANSACTIONS, null, txCv)
     }
 
+    fun updateContactName(contactId: Long, newName: String): Boolean {
+        val cleanName = newName.trim()
+        if (cleanName.isEmpty()) return false
+        val newKey = SmartDebtParser.normalizeContactKey(cleanName)
+        val db = writableDatabase
+
+        // Check if another contact already has this key
+        val check = db.rawQuery(
+            "SELECT $COL_CONTACT_ID FROM $TABLE_CONTACTS WHERE $COL_CONTACT_KEY = ? AND $COL_CONTACT_ID != ?",
+            arrayOf(newKey, contactId.toString())
+        )
+        val isDuplicate = check.moveToFirst()
+        var targetId = -1L
+        if (isDuplicate) {
+            targetId = check.getLong(0)
+        }
+        check.close()
+
+        if (isDuplicate && targetId != -1L) {
+            // Merge transactions into targetId
+            db.beginTransaction()
+            try {
+                val cvTx = ContentValues().apply {
+                    put(COL_TX_CONTACT_ID, targetId)
+                    put(COL_TX_SYNC_STATUS, 0)
+                }
+                db.update(TABLE_TRANSACTIONS, cvTx, "$COL_TX_CONTACT_ID = ?", arrayOf(contactId.toString()))
+                db.delete(TABLE_CONTACTS, "$COL_CONTACT_ID = ?", arrayOf(contactId.toString()))
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+            recalculateAllDebts()
+            return true
+        }
+
+        db.beginTransaction()
+        try {
+            val cv = ContentValues().apply {
+                put(COL_CONTACT_NAME, cleanName)
+                put(COL_CONTACT_KEY, newKey)
+                put(COL_CONTACT_UPDATED, System.currentTimeMillis())
+            }
+            db.update(TABLE_CONTACTS, cv, "$COL_CONTACT_ID = ?", arrayOf(contactId.toString()))
+
+            // Mark transactions to re-sync with updated contact name
+            val txCv = ContentValues().apply {
+                put(COL_TX_SYNC_STATUS, 0)
+            }
+            db.update(TABLE_TRANSACTIONS, txCv, "$COL_TX_CONTACT_ID = ?", arrayOf(contactId.toString()))
+
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return true
+    }
+
     fun getAllDebtors(filterMode: Int = 0, query: String = ""): List<Debtor> {
         val list = mutableListOf<Debtor>()
         val db = readableDatabase

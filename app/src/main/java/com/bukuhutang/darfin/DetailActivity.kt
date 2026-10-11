@@ -3,12 +3,14 @@ package com.bukuhutang.darfin
 import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bukuhutang.darfin.adapter.TransactionAdapter
@@ -30,6 +32,9 @@ class DetailActivity : AppCompatActivity(), SyncListener {
     private lateinit var tvDetailSubtext: TextView
     private lateinit var rvTransactions: RecyclerView
     private lateinit var btnBack: ImageButton
+    private lateinit var btnEditName: ImageButton
+    private lateinit var layoutNameHeader: View
+    private lateinit var btnSettleDebt: Button
     private lateinit var btnQuickPay: Button
     private lateinit var btnAddDebtForPerson: Button
 
@@ -64,6 +69,9 @@ class DetailActivity : AppCompatActivity(), SyncListener {
         tvDetailSubtext = findViewById(R.id.tvDetailSubtext)
         rvTransactions = findViewById(R.id.rvTransactions)
         btnBack = findViewById(R.id.btnBack)
+        btnEditName = findViewById(R.id.btnEditName)
+        layoutNameHeader = findViewById(R.id.layoutNameHeader)
+        btnSettleDebt = findViewById(R.id.btnSettleDebt)
         btnQuickPay = findViewById(R.id.btnQuickPay)
         btnAddDebtForPerson = findViewById(R.id.btnAddDebtForPerson)
 
@@ -76,6 +84,18 @@ class DetailActivity : AppCompatActivity(), SyncListener {
     private fun setupListeners() {
         btnBack.setOnClickListener {
             finish()
+        }
+
+        btnEditName.setOnClickListener {
+            showEditNameDialog()
+        }
+
+        layoutNameHeader.setOnClickListener {
+            showEditNameDialog()
+        }
+
+        btnSettleDebt.setOnClickListener {
+            confirmSettleDebt()
         }
 
         btnQuickPay.setOnClickListener {
@@ -101,12 +121,84 @@ class DetailActivity : AppCompatActivity(), SyncListener {
         txAdapter.updateData(txList)
 
         if (currentDebt == 0L) {
+            btnSettleDebt.isEnabled = false
+            btnSettleDebt.text = "✓ Hutang Sudah Lunas"
+            btnSettleDebt.backgroundTintList = ContextCompat.getColorStateList(this, R.color.text_secondary)
             btnQuickPay.isEnabled = false
-            btnQuickPay.text = "✓ Hutang Sudah Lunas"
         } else {
+            btnSettleDebt.isEnabled = true
+            btnSettleDebt.text = "✓ Lunaskan Hutang (${SmartDebtParser.formatRupiah(currentDebt)})"
+            btnSettleDebt.backgroundTintList = ContextCompat.getColorStateList(this, R.color.paid_green)
             btnQuickPay.isEnabled = true
-            btnQuickPay.text = "✓ Catat Bayar"
         }
+    }
+
+    private fun confirmSettleDebt() {
+        val debtors = dbHelper.getAllDebtors()
+        val currentDebt = debtors.find { it.id == contactId }?.totalDebt ?: 0L
+
+        if (currentDebt <= 0L) {
+            Toast.makeText(this, "Hutang sudah lunas", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val formattedDebt = SmartDebtParser.formatRupiah(currentDebt)
+        AlertDialog.Builder(this)
+            .setTitle("Pelunasan Total")
+            .setMessage("Lunaskan seluruh sisa hutang $formattedDebt untuk $contactName sekarang?")
+            .setPositiveButton("Ya, Lunaskan") { _, _ ->
+                dbHelper.recordPayment(contactId, currentDebt, "Pelunasan Total")
+                Toast.makeText(this, "Hutang berhasil dilunasi!", Toast.LENGTH_SHORT).show()
+                loadData()
+                CloudSyncManager.syncNow(this)
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showEditNameDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_name, null)
+        val etEditName = dialogView.findViewById<EditText>(R.id.etEditName)
+        val btnCancel = dialogView.findViewById<Button>(R.id.btnCancelEditName)
+        val btnSave = dialogView.findViewById<Button>(R.id.btnSaveEditName)
+
+        etEditName.setText(contactName)
+        etEditName.setSelection(contactName.length)
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+
+        btnSave.setOnClickListener {
+            val newName = etEditName.text.toString().trim()
+            if (newName.isEmpty()) {
+                Toast.makeText(this, "Nama tidak boleh kosong", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (newName.equals(contactName, ignoreCase = false)) {
+                dialog.dismiss()
+                return@setOnClickListener
+            }
+
+            val success = dbHelper.updateContactName(contactId, newName)
+            if (success) {
+                contactName = newName
+                tvDetailTitle.text = newName
+                Toast.makeText(this, "Nama pelanggan berhasil diubah!", Toast.LENGTH_SHORT).show()
+                loadData()
+                dialog.dismiss()
+                CloudSyncManager.syncNow(this)
+            } else {
+                Toast.makeText(this, "Gagal mengubah nama", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        dialog.show()
     }
 
     private fun showPaymentDialog() {
@@ -115,15 +207,15 @@ class DetailActivity : AppCompatActivity(), SyncListener {
 
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_debt, null)
         val tvTitle = dialogView.findViewById<TextView>(R.id.tvDialogTitle)
-        tvTitle?.text = "Catat Pembayaran - $contactName"
+        tvTitle?.text = "Catat Cicilan - $contactName"
 
         val tvSubtitle = dialogView.findViewById<TextView>(R.id.tvDialogSubtitle)
-        tvSubtitle?.text = "Sisa hutang: ${SmartDebtParser.formatRupiah(currentDebt)}. Ketik nominal (contoh: 20rb atau lunas)."
+        tvSubtitle?.text = "Sisa hutang: ${SmartDebtParser.formatRupiah(currentDebt)}. Ketik nominal (contoh: 20rb atau 50000)."
 
         val etInput = dialogView.findViewById<EditText>(R.id.etInput)
         val btnCancel = dialogView.findViewById<Button>(R.id.btnCancel)
         val btnSave = dialogView.findViewById<Button>(R.id.btnSave)
-        btnSave.text = "Simpan Pembayaran"
+        btnSave.text = "Simpan Cicilan"
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
@@ -152,7 +244,7 @@ class DetailActivity : AppCompatActivity(), SyncListener {
             val amount = SmartDebtParser.parseRupiahAmount(text)
             if (amount > 0) {
                 dbHelper.recordPayment(contactId, amount, "Pembayaran cicil")
-                Toast.makeText(this, "Pembayaran berhasil dicatat!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Pembayaran cicil berhasil dicatat!", Toast.LENGTH_SHORT).show()
                 loadData()
                 dialog.dismiss()
                 CloudSyncManager.syncNow(this)

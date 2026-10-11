@@ -15,28 +15,58 @@
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="12dp"
-        android:paddingTop="24dp"
+        android:paddingTop="26dp"
         android:paddingEnd="16dp"
-        android:paddingBottom="16dp">
+        android:paddingBottom="14dp">
 
         <ImageButton
             android:id="@+id/btnBack"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Kembali"
             android:src="@drawable/ic_back" />
 
-        <TextView
-            android:id="@+id/tvDetailTitle"
+        <LinearLayout
+            android:id="@+id/layoutNameHeader"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Buku Hutang"
-            android:textColor="@color/text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:background="?attr/selectableItemBackground"
+            android:orientation="vertical"
+            android:padding="4dp">
+
+            <TextView
+                android:id="@+id/tvDetailTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Buku Hutang"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="Ketuk untuk ubah nama"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Tombol Ubah Nama (Pencil Icon) -->
+        <ImageButton
+            android:id="@+id/btnEditName"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Ubah Nama"
+            android:padding="10dp"
+            android:src="@drawable/ic_edit"
+            app:tint="@color/text_primary" />
     </LinearLayout>
 
     <!-- Person Balance Card (Non-flat, elevated) -->
@@ -70,6 +100,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
+                android:includeFontPadding="false"
                 android:text="Rp 0"
                 android:textColor="@color/debt_red"
                 android:textSize="32sp"
@@ -80,42 +111,62 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Total transaksi: 0 kali"
+                android:text="Total riwayat: 0 kali"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
 
-            <!-- Action Buttons Row -->
+            <!-- Row 1: Tombol Lunaskan Hutang (Settle Full) -->
+            <Button
+                android:id="@+id/btnSettleDebt"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="16dp"
+                android:backgroundTint="@color/paid_green"
+                android:text="✓ Lunaskan Hutang"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:cornerRadius="12dp" />
+
+            <!-- Row 2: Tombol Cicil & Tambah Hutang -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="10dp"
                 android:orientation="horizontal">
 
                 <Button
                     android:id="@+id/btnQuickPay"
-                    style="@style/Widget.MaterialComponents.Button"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp"
-                    android:layout_height="50dp"
+                    android:layout_height="46dp"
                     android:layout_weight="1"
-                    android:backgroundTint="@color/paid_green"
-                    android:text="✓ Catat Bayar"
-                    android:textColor="@color/white"
+                    android:text="💵 Catat Cicil"
+                    android:textAllCaps="false"
+                    android:textColor="@color/paid_green"
                     android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="@color/paid_green"
+                    app:strokeWidth="1.5dp" />
 
                 <Button
                     android:id="@+id/btnAddDebtForPerson"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="0dp"
-                    android:layout_height="50dp"
+                    android:layout_height="46dp"
                     android:layout_marginStart="8dp"
                     android:layout_weight="1"
-                    app:strokeColor="@color/primary"
-                    app:strokeWidth="2dp"
-                    android:text="+ Tambah Hutang"
+                    android:text="➕ Tambah Hutang"
+                    android:textAllCaps="false"
                     android:textColor="@color/primary_dark"
                     android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="@color/primary"
+                    app:strokeWidth="1.5dp" />
             </LinearLayout>
 
         </LinearLayout>
@@ -125,7 +176,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="18dp"
         android:layout_marginBottom="8dp"
         android:letterSpacing="0.05"
         android:text="RIWAYAT TRANSAKSI"
@@ -142,6 +193,6 @@
         android:clipToPadding="false"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:paddingBottom="16dp" />
+        android:paddingBottom="24dp" />
 
 </LinearLayout>

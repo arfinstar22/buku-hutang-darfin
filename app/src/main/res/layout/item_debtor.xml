@@ -4,12 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="2dp"
-    android:layout_marginTop="3dp"
+    android:layout_marginTop="2dp"
     android:layout_marginEnd="2dp"
-    android:layout_marginBottom="3dp"
+    android:layout_marginBottom="2dp"
     android:foreground="?attr/selectableItemBackground"
     app:cardBackgroundColor="@color/card_surface"
-    app:cardCornerRadius="14dp"
+    app:cardCornerRadius="12dp"
     app:cardElevation="2dp">
 
     <LinearLayout
@@ -17,15 +17,15 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="14dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="14dp"
-        android:paddingBottom="10dp">
+        android:paddingStart="10dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="8dp">
 
-        <!-- Avatar Initials Circle (Sleek 38dp) -->
+        <!-- Avatar Initials Circle (34dp) -->
         <FrameLayout
-            android:layout_width="38dp"
-            android:layout_height="38dp"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
             android:background="@drawable/bg_avatar_circle">
 
             <TextView
@@ -35,16 +35,16 @@
                 android:layout_gravity="center"
                 android:text="LT"
                 android:textColor="@color/primary_dark"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
         </FrameLayout>
 
-        <!-- Name & Details -->
+        <!-- Name & Details (Maximized Width, No Truncation) -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="8dp"
+            android:layout_marginStart="9dp"
+            android:layout_marginEnd="6dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -54,6 +54,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
+                android:singleLine="true"
                 android:text="Nama Orang"
                 android:textColor="@color/text_primary"
                 android:textSize="15sp"
@@ -63,31 +64,33 @@
                 android:id="@+id/tvDebtorLastNote"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:ellipsize="end"
                 android:maxLines="1"
+                android:singleLine="true"
                 android:text="1x transaksi"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- Total Debt Pill Badge (3D Tactile Stroke & Pill) -->
+        <!-- Total Debt Pill Badge -->
         <LinearLayout
             android:id="@+id/layoutBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_badge_debt"
             android:gravity="center"
-            android:paddingStart="10dp"
-            android:paddingTop="5dp"
-            android:paddingEnd="10dp"
-            android:paddingBottom="5dp">
+            android:paddingStart="8dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp">
 
             <TextView
                 android:id="@+id/tvDebtorAmount"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:includeFontPadding="false"
+                android:singleLine="true"
                 android:text="Rp 50.000"
                 android:textColor="@color/debt_red"
                 android:textSize="13sp"

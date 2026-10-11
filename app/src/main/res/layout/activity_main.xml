@@ -10,17 +10,17 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- Top Header with Rich 3D Emerald Gradient (Compact & Elegant) -->
+        <!-- Top Header with Rich 3D Emerald Gradient (Compact, Clean & Anti-Squish) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_banner_gradient"
             android:elevation="4dp"
             android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingTop="20dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="12dp">
+            android:paddingStart="14dp"
+            android:paddingTop="18dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="10dp">
 
             <!-- Title & Cloud Sync Header Bar -->
             <LinearLayout
@@ -29,13 +29,12 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <!-- Left Column: App Name & Micro-Status Pill -->
+                <!-- Left Column: Title on top, Sync pill underneath (VERTICAL - CANNOT SQUISH!) -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:orientation="vertical">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -46,7 +45,7 @@
                         android:singleLine="true"
                         android:text="@string/app_name"
                         android:textColor="@color/white"
-                        android:textSize="19sp"
+                        android:textSize="20sp"
                         android:textStyle="bold" />
 
                     <!-- Sleek Compact Micro-Status Pill -->
@@ -54,14 +53,14 @@
                         android:id="@+id/layoutSyncStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
+                        android:layout_marginTop="3dp"
                         android:background="@drawable/bg_badge_sync_compact"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingStart="7dp"
-                        android:paddingTop="3dp"
-                        android:paddingEnd="8dp"
-                        android:paddingBottom="3dp">
+                        android:paddingStart="8dp"
+                        android:paddingTop="2dp"
+                        android:paddingEnd="9dp"
+                        android:paddingBottom="2dp">
 
                         <View
                             android:id="@+id/dotSync"
@@ -73,8 +72,10 @@
                             android:id="@+id/tvSyncStatus"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="4dp"
+                            android:layout_marginStart="5dp"
                             android:includeFontPadding="false"
+                            android:maxLines="1"
+                            android:singleLine="true"
                             android:text="@string/sync_online"
                             android:textColor="@color/white"
                             android:textSize="10sp" />
@@ -113,11 +114,11 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Hero Summary Card (Compact 3D Floating Dashboard) -->
+            <!-- Hero Summary Card (3D Floating Card, Full Width Numbers - ZERO WRAPPING!) -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="8dp"
                 app:cardBackgroundColor="@color/white"
                 app:cardCornerRadius="14dp"
                 app:cardElevation="3dp">
@@ -131,10 +132,36 @@
                     android:paddingEnd="14dp"
                     android:paddingBottom="10dp">
 
-                    <!-- Header Row: Label & Status Counter Pill -->
+                    <!-- Line 1: Label -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.04"
+                        android:singleLine="true"
+                        android:text="@string/grand_total_label"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <!-- Line 2: Big Grand Total Amount (FULL WIDTH - CANNOT WRAP!) -->
+                    <TextView
+                        android:id="@+id/tvGrandTotal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:singleLine="true"
+                        android:text="Rp 0"
+                        android:textColor="@color/debt_red"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                    <!-- Line 3: Subtitle & Status Badge in bottom row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -142,17 +169,17 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:letterSpacing="0.04"
-                            android:text="@string/grand_total_label"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp"
-                            android:textStyle="bold" />
+                            android:singleLine="true"
+                            android:text="@string/grand_total_sub"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
 
-                        <!-- Compact Status Counter Badge -->
+                        <!-- Compact Counter Badge -->
                         <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:background="@drawable/bg_badge_paid"
+                            android:gravity="center_vertical"
                             android:paddingStart="8dp"
                             android:paddingTop="2dp"
                             android:paddingEnd="8dp"
@@ -162,6 +189,7 @@
                                 android:id="@+id/tvDebtorCount"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:singleLine="true"
                                 android:text="0 belum lunas"
                                 android:textColor="@color/paid_green"
                                 android:textSize="11sp"
@@ -179,50 +207,24 @@
                                 android:id="@+id/tvSettledCount"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:singleLine="true"
                                 android:text="0 lunas"
                                 android:textColor="@color/paid_green"
                                 android:textSize="11sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
                     </LinearLayout>
-
-                    <!-- Big Grand Total Amount & Subtitle in compact layout -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:id="@+id/tvGrandTotal"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:includeFontPadding="false"
-                            android:text="Rp 0"
-                            android:textColor="@color/debt_red"
-                            android:textSize="26sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/grand_total_sub"
-                            android:textColor="@color/text_muted"
-                            android:textSize="11sp" />
-                    </LinearLayout>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
         </LinearLayout>
 
-        <!-- Search Bar (Sleek 40dp Height) -->
+        <!-- Search Bar (Sleek 38dp Height) -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginStart="14dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="14dp"
+            android:layout_height="38dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="12dp"
             android:background="@drawable/bg_card_elevated"
             android:gravity="center_vertical"
             android:orientation="horizontal"
@@ -230,8 +232,8 @@
             android:paddingEnd="12dp">
 
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:contentDescription="Search"
                 android:src="@drawable/ic_person"
                 app:tint="@color/text_hint" />
@@ -250,14 +252,14 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
-        <!-- Quick Filter Toggle Chips in Horizontal Scroll (Compact 28dp) -->
+        <!-- Quick Filter Toggle Chips in Horizontal Scroll (26dp Compact) -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="5dp"
             android:clipToPadding="false"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:scrollbars="none">
 
             <LinearLayout
@@ -268,7 +270,7 @@
                 <TextView
                     android:id="@+id/btnFilterAll"
                     android:layout_width="wrap_content"
-                    android:layout_height="28dp"
+                    android:layout_height="26dp"
                     android:background="@drawable/bg_chip_selected"
                     android:gravity="center"
                     android:paddingStart="12dp"
@@ -281,7 +283,7 @@
                 <TextView
                     android:id="@+id/btnFilterUnpaid"
                     android:layout_width="wrap_content"
-                    android:layout_height="28dp"
+                    android:layout_height="26dp"
                     android:layout_marginStart="6dp"
                     android:background="@drawable/bg_chip_unselected"
                     android:gravity="center"
@@ -295,7 +297,7 @@
                 <TextView
                     android:id="@+id/btnFilterPaid"
                     android:layout_width="wrap_content"
-                    android:layout_height="28dp"
+                    android:layout_height="26dp"
                     android:layout_marginStart="6dp"
                     android:background="@drawable/bg_chip_unselected"
                     android:gravity="center"
@@ -308,21 +310,21 @@
             </LinearLayout>
         </HorizontalScrollView>
 
-        <!-- Debtors List Container (Maximally spacious for 4+ rows) -->
+        <!-- Debtors List Container (Spacious room for 4+ rows) -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:paddingStart="10dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="10dp">
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvDebtors"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:paddingBottom="96dp" />
+                android:paddingBottom="90dp" />
 
             <LinearLayout
                 android:id="@+id/tvEmptyState"
@@ -364,13 +366,13 @@
         </FrameLayout>
     </LinearLayout>
 
-    <!-- Large Elevated FAB for Ibu & Tuan Darfin -->
+    <!-- Elevated FAB for Quick Add -->
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fabAdd"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="18dp"
+        android:layout_margin="16dp"
         android:backgroundTint="@color/primary"
         android:text="@string/add_debt_button"
         android:textColor="@color/white"

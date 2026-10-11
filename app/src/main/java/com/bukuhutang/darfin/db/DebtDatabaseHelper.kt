@@ -99,9 +99,12 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_TRANSACTIONS")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_CONTACTS")
-        onCreate(db)
+        if (oldVersion < 2) {
+            try {
+                db.execSQL("ALTER TABLE $TABLE_TRANSACTIONS ADD COLUMN $COL_TX_UUID TEXT")
+                db.execSQL("ALTER TABLE $TABLE_TRANSACTIONS ADD COLUMN $COL_TX_SYNC_STATUS INTEGER DEFAULT 0")
+            } catch (_: Exception) {}
+        }
     }
 
     fun processMessageInput(text: String): Boolean {
@@ -386,7 +389,7 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                         uuid = cursor.getString(1),
                         contactId = cursor.getLong(2),
                         amount = cursor.getLong(3),
-                        type = DebtType.valueOf(cursor.getString(4)),
+                        type = DebtType.fromString(cursor.getString(4)),
                         note = cursor.getString(5) ?: "",
                         createdAt = cursor.getString(6),
                         timestamp = cursor.getLong(7),
@@ -570,7 +573,7 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                         lastNote = note
                         lastTime = time
 
-                        when (DebtType.valueOf(typeStr)) {
+                        when (DebtType.fromString(typeStr)) {
                             DebtType.DEBT -> balance += amount
                             DebtType.PAYMENT -> balance = maxOf(0L, balance - amount)
                             DebtType.SETTLED -> balance = 0L
@@ -590,5 +593,16 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         } finally {
             db.endTransaction()
         }
+    }
+
+    fun getLatestTransactionTimestamp(): Long {
+        val db = readableDatabase
+        val cursor = db.rawQuery("SELECT MAX($COL_TX_TIMESTAMP) FROM $TABLE_TRANSACTIONS", null)
+        var maxTime = 0L
+        if (cursor.moveToFirst()) {
+            maxTime = cursor.getLong(0)
+        }
+        cursor.close()
+        return maxTime
     }
 }

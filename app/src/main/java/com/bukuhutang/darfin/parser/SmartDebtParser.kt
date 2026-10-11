@@ -15,7 +15,14 @@ data class ParsedDebtResult(
 enum class DebtType {
     DEBT,     // Tambah hutang
     PAYMENT,  // Cicil / bayar
-    SETTLED   // Lunas
+    SETTLED;  // Lunas
+
+    companion object {
+        fun fromString(value: String?): DebtType {
+            if (value.isNullOrBlank()) return DEBT
+            return values().firstOrNull { it.name.equals(value.trim(), ignoreCase = true) } ?: DEBT
+        }
+    }
 }
 
 object SmartDebtParser {
@@ -107,7 +114,8 @@ object SmartDebtParser {
         }
 
         if (isSettled && !Regex("\\d").containsMatchIn(raw)) {
-            val namePart = raw.replace(Regex("\\b(lunas|selesai|clear)\\b", RegexOption.IGNORE_CASE), "").trim()
+            val rawName = raw.replace(Regex("\\b(lunas|selesai|clear)\\b", RegexOption.IGNORE_CASE), "").trim()
+            val namePart = if (rawName.isBlank()) "Tanpa Nama" else rawName
             return ParsedDebtResult(
                 raw = raw,
                 type = DebtType.SETTLED,

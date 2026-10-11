@@ -40,6 +40,11 @@ test('Smart Debt Parser - Payment and Settle actions', () => {
   assert.equal(lunas1.type, 'SETTLED');
   assert.equal(lunas1.amount, 0);
   assert.equal(lunas1.name, 'Budi');
+
+  const lunasSolo = parseDebtMessage('lunas');
+  assert.equal(lunasSolo.type, 'SETTLED');
+  assert.equal(lunasSolo.name, 'Tanpa Nama');
+  assert.equal(lunasSolo.canonicalKey, 'tanpa_nama');
 });
 
 test('Smart Debt Parser - Sulawesi naming rule: La tanto == latanto == tanto', () => {

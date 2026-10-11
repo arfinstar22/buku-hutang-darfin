@@ -13,6 +13,7 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 
 enum class SyncStatus {
@@ -38,7 +39,7 @@ object CloudSyncManager {
 
     private val executor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val listeners = mutableListOf<SyncListener>()
+    private val listeners = CopyOnWriteArrayList<SyncListener>()
 
     private var isSyncing = false
     private var isPollingActive = false
@@ -155,8 +156,10 @@ object CloudSyncManager {
                     postConn.disconnect()
                 }
 
-                // 2. PULL: Fetch all transactions from Supabase
-                val getUrl = URL("$baseUrl/rest/v1/transactions?select=*&order=timestamp.asc")
+                // 2. PULL: Fetch recent transactions from Supabase (Delta Sync)
+                val lastTimestamp = dbHelper.getLatestTransactionTimestamp()
+                val minTimestamp = maxOf(0L, lastTimestamp - 60_000L) // 1 minute buffer for clock drift
+                val getUrl = URL("$baseUrl/rest/v1/transactions?select=*&timestamp=gte.$minTimestamp&order=timestamp.asc")
                 val getConn = (getUrl.openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
                     connectTimeout = 5000

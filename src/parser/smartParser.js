@@ -107,7 +107,8 @@ export function parseDebtMessage(text) {
 
   // If settled with no amount (e.g. "budi lunas")
   if (isSettled && !/\d/.test(raw)) {
-    const namePart = raw.replace(/\b(lunas|selesai|clear)\b/gi, '').trim();
+    const rawName = raw.replace(/\b(lunas|selesai|clear)\b/gi, '').trim();
+    const namePart = rawName || 'Tanpa Nama';
     return {
       raw,
       type: 'SETTLED',

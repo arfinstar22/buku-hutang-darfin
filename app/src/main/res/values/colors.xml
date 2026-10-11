@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Gojek Green Branding & High-Contrast Accessible Colors -->
+    <color name="primary">#00AA13</color>
+    <color name="primary_dark">#007A0E</color>
+    <color name="accent">#00C417</color>
+    
+    <color name="background_light">#F5F8F5</color>
+    <color name="card_surface">#FFFFFF</color>
+    
+    <!-- Large, accessible text colors for Ibu -->
+    <color name="text_primary">#141714</color>
+    <color name="text_secondary">#4F574F</color>
+    
+    <!-- Status colors -->
+    <color name="debt_red">#D32F2F</color>
+    <color name="debt_red_soft">#FFEBEE</color>
+    <color name="paid_green">#00880E</color>
+    <color name="paid_green_soft">#E8F5E9</color>
+    <color name="gold_badge">#FF9800</color>
+    <color name="white">#FFFFFF</color>
+    <color name="divider">#E0E5E0</color>
+</resources>

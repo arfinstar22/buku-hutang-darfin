@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">Buku Hutang Darfin</string>
+    <string name="grand_total_label">TOTAL HUTANG BELUM LUNAS</string>
+    <string name="grand_total_sub">Akumulasi hutang semua orang yang belum dibayar</string>
+    <string name="search_hint">Cari nama (contoh: Budi, Tanto)...</string>
+    <string name="add_debt_button">+ Catat Hutang Baru</string>
+    <string name="dialog_title">Catat Hutang / Bayar</string>
+    <string name="dialog_input_hint">Ketik bebas: budi 50rb / latanto cicil 20k / lunas</string>
+    <string name="btn_simpan">Simpan Catatan</string>
+    <string name="btn_batal">Batal</string>
+    <string name="empty_debts">Belum ada catatan hutang.\nTekan tombol di bawah untuk mencatat.</string>
+    <string name="detail_title">Rincian Hutang</string>
+    <string name="btn_bayar_lunas">✓ Catat Pembayaran / Lunas</string>
+    <string name="toast_saved">Catatan berhasil disimpan!</string>
+    <string name="toast_invalid">Format tidak dikenali. Contoh: budi 50rb</string>
+    
+    <!-- Filter Chips -->
+    <string name="filter_all">Semua</string>
+    <string name="filter_unpaid">Belum Lunas</string>
+    <string name="filter_paid">Lunas</string>
+    
+    <!-- Cloud Real-Time Sync -->
+    <string name="sync_online">🟢 Real-time Aktif</string>
+    <string name="sync_syncing">🔄 Menghubungkan...</string>
+    <string name="sync_offline">☁️ Tersimpan Lokal</string>
+    <string name="cloud_settings_title">Pengaturan Sinkronisasi Cloud</string>
+    <string name="cloud_url_hint">URL Server Sync (Contoh: http://192.168.1.5:3000)</string>
+    <string name="btn_sync_now">Sinkronkan Sekarang</string>
+    <string name="btn_save_settings">Simpan Pengaturan</string>
+</resources>

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gojek Green Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00BA15"/>
+      <stop offset="100%" stop-color="#00880E"/>
+    </linearGradient>
+    
+    <!-- Soft Inner Shadow for Book Depth -->
+    <linearGradient id="bookCoverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F2F8F3"/>
+    </linearGradient>
+
+    <!-- Coin Gradient -->
+    <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00C417"/>
+      <stop offset="100%" stop-color="#00880E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App Icon Squircle Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+
+  <!-- Subtle Ambient Glow -->
+  <circle cx="256" cy="256" r="210" fill="#FFFFFF" opacity="0.08"/>
+
+  <!-- Book Pages Layer (Backing Depth) -->
+  <rect x="156" y="112" width="224" height="288" rx="28" fill="#D3EFD8"/>
+  <rect x="146" y="116" width="224" height="280" rx="26" fill="#EBF7ED"/>
+
+  <!-- Book Cover (Front Ledger) -->
+  <rect x="136" y="120" width="224" height="272" rx="24" fill="url(#bookCoverGrad)"/>
+
+  <!-- Book Spine Detail (Left Bar) -->
+  <path d="M 136 144 Q 136 120 160 120 L 176 120 L 176 392 L 160 392 Q 136 392 136 368 Z" fill="#E0EDE2"/>
+
+  <!-- Bookmark Ribbon (Golden Yellow for Warmth & Accent) -->
+  <path d="M 292 120 L 324 120 L 324 196 L 308 180 L 292 196 Z" fill="#FFAA00"/>
+
+  <!-- Central Emblem: Rupiah Coin & Checkmark (Debt Settled & Recorded) -->
+  <!-- Coin Base Outer Ring -->
+  <circle cx="248" cy="260" r="58" fill="url(#coinGrad)"/>
+  <circle cx="248" cy="260" r="48" fill="#00880E" opacity="0.15"/>
+  <circle cx="248" cy="260" r="44" fill="#FFFFFF"/>
+
+  <!-- "Rp" Stylized Balance Symbol in Gojek Green -->
+  <!-- Clean geometric Rp glyph -->
+  <path d="M 230 236 L 230 284 M 230 236 L 248 236 C 258 236 264 242 264 250 C 264 258 258 264 248 264 L 230 264 M 244 264 L 260 284" 
+        fill="none" 
+        stroke="#00880E" 
+        stroke-width="7" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+
+  <!-- Ledger Lines on Book Front (Minimalist Note Indicators) -->
+  <line x1="200" y1="340" x2="296" y2="340" stroke="#B8D9BE" stroke-width="6" stroke-linecap="round"/>
+  <line x1="200" y1="360" x2="260" y2="360" stroke="#B8D9BE" stroke-width="6" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: buku-hutang-darfin-sync
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: node src/server/syncServer.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000

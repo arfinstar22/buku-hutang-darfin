@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00AA13"
+        android:pathData="M18,18h72v72h-72z"/>
+    <!-- Notebook white -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,24h44c3.3,0 6,2.7 6,6v48c0,3.3 -2.7,6 -6,6h-44c-3.3,0 -6,-2.7 -6,-6v-48c0,-3.3 2.7,-6 6,-6z"/>
+    <!-- Ribbon Gold -->
+    <path
+        android:fillColor="#FFAA00"
+        android:pathData="M64,24h8v16l-4,-3l-4,3z"/>
+    <!-- Green circle coin -->
+    <path
+        android:fillColor="#00AA13"
+        android:pathData="M54,54m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0"/>
+    <!-- White Rp inner -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,48h5c2.2,0 4,1.8 4,4s-1.8,4 -4,4h-5v5h-2v-13h7z"/>
+</vector>

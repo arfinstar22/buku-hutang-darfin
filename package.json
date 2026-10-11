@@ -1,0 +1,18 @@
+{
+  "name": "buku-hutang-darfin",
+  "version": "1.0.0",
+  "description": "Buku Hutang Darfin - Aplikasi Pencatat Hutang Piutang Real-Time Multi-Device",
+  "main": "src/server/syncServer.js",
+  "scripts": {
+    "start": "node src/server/syncServer.js",
+    "test": "node --test src/server/syncServer.test.js src/parser/smartParser.test.js src/db/debtStore.test.js"
+  },
+  "keywords": [
+    "debt-tracker",
+    "android",
+    "realtime-sync",
+    "sulawesi-nlp"
+  ],
+  "author": "Tuan Darfin <darfinstar22@gmail.com>",
+  "license": "MIT"
+}

@@ -1,0 +1,33 @@
+{
+  "transactions": [
+    {
+      "uuid": "tx-001",
+      "debtorName": "La tanto",
+      "canonicalKey": "tanto",
+      "amount": 50000,
+      "type": "DEBT",
+      "note": "Beli beras",
+      "createdAt": "11 Okt 2026, 12:00",
+      "timestamp": 1700000000000
+    },
+    {
+      "uuid": "tx-002",
+      "debtorName": "tanto",
+      "canonicalKey": "tanto",
+      "amount": 20000,
+      "type": "PAYMENT",
+      "note": "Cicil",
+      "createdAt": "11 Okt 2026, 14:00",
+      "timestamp": 1700000001000
+    }
+  ],
+  "debtors": [
+    {
+      "name": "La tanto",
+      "canonicalKey": "tanto",
+      "totalDebt": 30000,
+      "lastNote": "Cicil",
+      "updatedAt": 1700000001000
+    }
+  ]
+}

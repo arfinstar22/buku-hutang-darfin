@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity(), SyncListener {
     private lateinit var fabAdd: ExtendedFloatingActionButton
 
     private lateinit var tvSyncStatus: TextView
+    private lateinit var dotSync: View
     private lateinit var btnRefreshSync: ImageView
     private lateinit var btnCloudSettings: ImageView
 
@@ -92,6 +93,7 @@ class MainActivity : AppCompatActivity(), SyncListener {
         fabAdd = findViewById(R.id.fabAdd)
 
         tvSyncStatus = findViewById(R.id.tvSyncStatus)
+        dotSync = findViewById(R.id.dotSync)
         btnRefreshSync = findViewById(R.id.btnRefreshSync)
         btnCloudSettings = findViewById(R.id.btnCloudSettings)
 
@@ -199,18 +201,20 @@ class MainActivity : AppCompatActivity(), SyncListener {
     // --- SyncListener Implementation ---
 
     override fun onSyncStateChanged(status: SyncStatus, message: String) {
-        when (status) {
-            SyncStatus.ONLINE -> {
-                tvSyncStatus.text = "🟢 Real-time Aktif"
-                tvSyncStatus.setTextColor(ContextCompat.getColor(this, R.color.paid_green))
-            }
-            SyncStatus.SYNCING -> {
-                tvSyncStatus.text = "🔄 Sinkronisasi..."
-                tvSyncStatus.setTextColor(ContextCompat.getColor(this, R.color.primary))
-            }
-            SyncStatus.OFFLINE -> {
-                tvSyncStatus.text = "☁️ Tersimpan Lokal"
-                tvSyncStatus.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+        runOnUiThread {
+            when (status) {
+                SyncStatus.ONLINE -> {
+                    tvSyncStatus.text = "Real-time Aktif"
+                    dotSync.setBackgroundResource(R.drawable.bg_dot_green)
+                }
+                SyncStatus.SYNCING -> {
+                    tvSyncStatus.text = "Sinkronisasi..."
+                    dotSync.setBackgroundResource(R.drawable.bg_dot_yellow)
+                }
+                SyncStatus.OFFLINE -> {
+                    tvSyncStatus.text = "Tersimpan Lokal"
+                    dotSync.setBackgroundResource(R.drawable.bg_dot_gray)
+                }
             }
         }
     }

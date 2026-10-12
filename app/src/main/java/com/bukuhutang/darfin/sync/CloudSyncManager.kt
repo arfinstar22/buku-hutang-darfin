@@ -233,6 +233,30 @@ object CloudSyncManager {
         }
     }
 
+    fun deleteRemoteContact(context: Context, canonicalKey: String) {
+        executor.execute {
+            try {
+                val baseUrl = getSupabaseUrl(context)
+                val apiKey = getSupabaseKey(context)
+                val syncSecret = getSyncSecret(context)
+                val deleteUrl = URL("$baseUrl/rest/v1/transactions?canonical_key=eq.$canonicalKey")
+                val conn = (deleteUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "DELETE"
+                    connectTimeout = 5000
+                    readTimeout = 5000
+                    setRequestProperty("apikey", apiKey)
+                    setRequestProperty("Authorization", "Bearer $apiKey")
+                    setRequestProperty("x-sync-secret", syncSecret)
+                }
+                val code = conn.responseCode
+                Log.d(TAG, "Delete remote transactions for $canonicalKey status: $code")
+                conn.disconnect()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete remote contact: ${e.message}")
+            }
+        }
+    }
+
     private fun notifyState(status: SyncStatus, msg: String) {
         mainHandler.post {
             for (listener in listeners) {

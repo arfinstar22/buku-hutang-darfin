@@ -114,15 +114,42 @@ object SmartDebtParser {
         }
 
         if (isSettled && !Regex("\\d").containsMatchIn(raw)) {
-            val rawName = raw.replace(Regex("\\b(lunas|selesai|clear)\\b", RegexOption.IGNORE_CASE), "").trim()
-            val namePart = if (rawName.isBlank()) "Tanpa Nama" else rawName
+            val clean = raw.replace(Regex("\\b(lunas|selesai|clear)\\b", RegexOption.IGNORE_CASE), "").trim()
+            val words = clean.split("\\s+".toRegex()).filter { it.isNotBlank() }
+            val namePart: String
+            val notePart: String
+
+            if (words.isEmpty()) {
+                namePart = "Tanpa Nama"
+                notePart = "Lunas"
+            } else if (words.size == 1) {
+                namePart = words[0]
+                notePart = "Lunas"
+            } else {
+                val lower0 = words[0].lowercase(Locale.ROOT)
+                val lower1 = words[1].lowercase(Locale.ROOT)
+                val isTwoWordPrefix = (lower0 == "la" && lower1 == "ode")
+                val isHonorificPrefix = lower0 in listOf("mama", "ibu", "mak", "mami", "tante", "bapak", "pak", "om", "mas", "bang", "kak", "la")
+
+                if (isTwoWordPrefix && words.size >= 3) {
+                    namePart = "${words[0]} ${words[1]} ${words[2]}"
+                    notePart = words.drop(3).joinToString(" ").ifEmpty { "Lunas" }
+                } else if (isHonorificPrefix && words.size >= 2) {
+                    namePart = "${words[0]} ${words[1]}"
+                    notePart = words.drop(2).joinToString(" ").ifEmpty { "Lunas" }
+                } else {
+                    namePart = words[0]
+                    notePart = words.drop(1).joinToString(" ").ifEmpty { "Lunas" }
+                }
+            }
+
             return ParsedDebtResult(
                 raw = raw,
                 type = DebtType.SETTLED,
                 name = formatDisplayName(namePart),
                 canonicalKey = normalizeContactKey(namePart),
                 amount = 0L,
-                note = "Lunas"
+                note = if (notePart == "Lunas") "Lunas" else "Lunas ($notePart)"
             )
         }
 

@@ -200,6 +200,36 @@
         android:layoutAnimation="@anim/layout_cascade_controller"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:paddingBottom="24dp" />
+        android:paddingBottom="12dp" />
+
+    <!-- Bottom Sticky Action: Delete Person Button -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/card_surface"
+        android:elevation="6dp"
+        android:paddingStart="16dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="14dp">
+
+        <Button
+            android:id="@+id/btnDeleteContact"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:stateListAnimator="@animator/press_scale"
+            android:text="Hapus Pelanggan Ini"
+            android:textAllCaps="false"
+            android:textColor="@color/debt_red"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/ic_trash"
+            app:iconGravity="textStart"
+            app:iconTint="@color/debt_red"
+            app:strokeColor="@color/debt_red"
+            app:strokeWidth="1.2dp" />
+    </LinearLayout>
 
 </LinearLayout>

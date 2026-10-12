@@ -125,7 +125,7 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         val newDebt = when (parsed.type) {
             DebtType.DEBT -> currentDebt + parsed.amount
             DebtType.PAYMENT -> maxOf(0L, currentDebt - parsed.amount)
-            DebtType.SETTLED -> 0L
+            DebtType.SETTLED -> if (parsed.amount > 0L) maxOf(0L, currentDebt - parsed.amount) else 0L
         }
 
         val noteText = parsed.note.ifEmpty {
@@ -159,10 +159,11 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
             db.update(TABLE_CONTACTS, cv, "$COL_CONTACT_ID = ?", arrayOf(contactId.toString()))
         }
 
+        val txAmount = if (parsed.type == DebtType.SETTLED && parsed.amount == 0L) currentDebt else parsed.amount
         val txCv = ContentValues().apply {
             put(COL_TX_UUID, txUuid)
             put(COL_TX_CONTACT_ID, contactId)
-            put(COL_TX_AMOUNT, parsed.amount)
+            put(COL_TX_AMOUNT, txAmount)
             put(COL_TX_TYPE, parsed.type.name)
             put(COL_TX_NOTE, noteText)
             put(COL_TX_DATE, dateStr)
@@ -299,6 +300,30 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
             db.endTransaction()
         }
         return true
+    }
+
+    fun deleteContact(contactId: Long): String? {
+        val db = writableDatabase
+        var canonicalKey: String? = null
+
+        val cursor = db.rawQuery(
+            "SELECT $COL_CONTACT_KEY FROM $TABLE_CONTACTS WHERE $COL_CONTACT_ID = ?",
+            arrayOf(contactId.toString())
+        )
+        if (cursor.moveToFirst()) {
+            canonicalKey = cursor.getString(0)
+        }
+        cursor.close()
+
+        db.beginTransaction()
+        try {
+            db.delete(TABLE_TRANSACTIONS, "$COL_TX_CONTACT_ID = ?", arrayOf(contactId.toString()))
+            db.delete(TABLE_CONTACTS, "$COL_CONTACT_ID = ?", arrayOf(contactId.toString()))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return canonicalKey
     }
 
     fun getAllDebtors(filterMode: Int = 0, query: String = ""): List<Debtor> {

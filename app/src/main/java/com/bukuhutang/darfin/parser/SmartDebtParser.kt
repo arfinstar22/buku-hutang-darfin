@@ -68,23 +68,43 @@ object SmartDebtParser {
 
     fun parseRupiahAmount(amountStr: String?): Long {
         if (amountStr.isNullOrBlank()) return 0L
-        var clean = amountStr.lowercase(Locale.ROOT)
+        val clean = amountStr.lowercase(Locale.ROOT)
             .replace(Regex("rp\\.?\\s*", RegexOption.IGNORE_CASE), "")
             .replace(Regex(",-\\s*$"), "")
             .trim()
 
-        if (Regex("(\\d+(?:[.,]\\d+)?)\\s*(jt|juta)\\b", RegexOption.IGNORE_CASE).containsMatchIn(clean)) {
-            val numStr = clean.replace(Regex("\\s*(jt|juta).*", RegexOption.IGNORE_CASE), "").replace(',', '.')
+        // 1. Suffix Millions (jt / juta)
+        val jtMatch = Regex("(\\d+(?:[.,]\\d+)?)\\s*(?:jt|juta)\\b", RegexOption.IGNORE_CASE).find(clean)
+        if (jtMatch != null) {
+            val numStr = jtMatch.groupValues[1].replace(',', '.')
             val d = numStr.toDoubleOrNull() ?: 0.0
             return (d * 1000000).toLong()
-        } else if (Regex("(\\d+(?:[.,]\\d+)?)\\s*(rb|ribu|k)\\b", RegexOption.IGNORE_CASE).containsMatchIn(clean)) {
-            val numStr = clean.replace(Regex("\\s*(rb|ribu|k).*", RegexOption.IGNORE_CASE), "").replace(',', '.')
+        }
+
+        // 2. Suffix Thousands (rb / ribu / k)
+        val rbMatch = Regex("(\\d+(?:[.,]\\d+)?)\\s*(?:rb|ribu|k)\\b", RegexOption.IGNORE_CASE).find(clean)
+        if (rbMatch != null) {
+            val numStr = rbMatch.groupValues[1].replace(',', '.')
             val d = numStr.toDoubleOrNull() ?: 0.0
             return (d * 1000).toLong()
         }
 
-        val digitsOnly = clean.replace(Regex("[^0-9]"), "")
-        return digitsOnly.toLongOrNull() ?: 0L
+        // 3. Dot-separated thousands format e.g. 50.000 or 1.500.000
+        val dotMatch = Regex("\\b\\d{1,3}(?:\\.\\d{3})+\\b").find(clean)
+        if (dotMatch != null) {
+            val digits = dotMatch.value.replace(".", "")
+            return digits.toLongOrNull() ?: 0L
+        }
+
+        // 4. Standalone numbers e.g. 50000 or shorthand (50 -> 50rb, 40 -> 40rb, 356 -> 356rb)
+        val numberMatches = Regex("\\b\\d+\\b").findAll(clean).toList()
+        if (numberMatches.isNotEmpty()) {
+            val lastNumberStr = numberMatches.last().value
+            val rawNum = lastNumberStr.toLongOrNull() ?: 0L
+            return if (rawNum in 1..999) rawNum * 1000 else rawNum
+        }
+
+        return 0L
     }
 
     fun formatDisplayName(name: String): String {
@@ -96,7 +116,7 @@ object SmartDebtParser {
     }
 
     fun formatRupiah(amount: Long): String {
-        val format = NumberFormat.getNumberInstance(Locale("in", "ID"))
+        val format = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID"))
         return "Rp " + format.format(amount)
     }
 
@@ -153,9 +173,26 @@ object SmartDebtParser {
             )
         }
 
-        // Amount pattern
-        val moneyRegex = Regex("(?:rp\\.?\\s*)?(\\d+(?:[.,]\\d+)?\\s*(?:jt|juta|rb|ribu|k)|(?:\\d{1,3}(?:\\.\\d{3})+|\\d{4,}))(?:\\s*,-)?", RegexOption.IGNORE_CASE)
-        val match = moneyRegex.find(raw) ?: return null
+        // Amount pattern:
+        // Priority 1: Explicit money pattern (with rp, rb/k/jt suffix, dot-separated thousands, or 4+ digits)
+        val explicitMoneyRegex = Regex(
+            "(?:rp\\.?\\s*)(\\d+(?:[.,]\\d+)?\\s*(?:jt|juta|rb|ribu|k)?)|" +
+            "(\\d+(?:[.,]\\d+)?\\s*(?:jt|juta|rb|ribu|k))|" +
+            "(\\d{1,3}(?:\\.\\d{3})+|\\d{4,})(?:\\s*,-)?",
+            RegexOption.IGNORE_CASE
+        )
+        var match = explicitMoneyRegex.find(raw)
+
+        // Priority 2: Standalone numbers (shorthand e.g. 50 -> 50rb, budi 40 -> budi 40rb, 356 -> 356rb)
+        if (match == null) {
+            val rawNumberRegex = Regex("\\b\\d+\\b")
+            val allNumberMatches = rawNumberRegex.findAll(raw).toList()
+            if (allNumberMatches.isNotEmpty()) {
+                match = allNumberMatches.last()
+            }
+        }
+
+        if (match == null) return null
 
         val rawAmountStr = match.value
         val amount = parseRupiahAmount(rawAmountStr)
@@ -167,6 +204,22 @@ object SmartDebtParser {
         val actionCleanRegex = Regex("\\b(bayar|cicil|angsur|lunas|utang|hutang)\\b", RegexOption.IGNORE_CASE)
         var namePart = before.replace(actionCleanRegex, "").trim()
         var notePart = after.replace(actionCleanRegex, "").trim()
+
+        // If amount was at the end and 'before' contains quantity or item note (e.g. "budi 2 bungkus 40")
+        if (notePart.isEmpty() && namePart.isNotEmpty()) {
+            val words = namePart.split("\\s+".toRegex())
+            var digitIdx = -1
+            for (i in words.indices) {
+                if (Regex("^\\d").containsMatchIn(words[i])) {
+                    digitIdx = i
+                    break
+                }
+            }
+            if (digitIdx > 0) {
+                namePart = words.subList(0, digitIdx).joinToString(" ")
+                notePart = words.subList(digitIdx, words.size).joinToString(" ")
+            }
+        }
 
         if (namePart.isEmpty() && after.isNotEmpty()) {
             val parts = after.split("\\s+".toRegex())

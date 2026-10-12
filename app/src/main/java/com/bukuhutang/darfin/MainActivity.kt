@@ -143,6 +143,7 @@ class MainActivity : AppCompatActivity(), SyncListener {
         btnFilterPaid.setTextColor(if (mode == 2) white else textDark)
 
         loadData(etSearch.text.toString())
+        rvDebtors.scheduleLayoutAnimation()
     }
 
     private fun setupListeners() {
@@ -159,8 +160,11 @@ class MainActivity : AppCompatActivity(), SyncListener {
         }
 
         btnRefreshSync.setOnClickListener {
+            val rotateAnim = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.rotate_sync)
+            btnRefreshSync.startAnimation(rotateAnim)
             Toast.makeText(this, "Menyinkronkan data...", Toast.LENGTH_SHORT).show()
             CloudSyncManager.syncNow(this) { success, newCount ->
+                btnRefreshSync.clearAnimation()
                 if (success) {
                     Toast.makeText(this, "Sinkronisasi berhasil! ($newCount data baru)", Toast.LENGTH_SHORT).show()
                     loadData(etSearch.text.toString())
@@ -204,14 +208,20 @@ class MainActivity : AppCompatActivity(), SyncListener {
         runOnUiThread {
             when (status) {
                 SyncStatus.ONLINE -> {
+                    btnRefreshSync.clearAnimation()
                     tvSyncStatus.text = "Real-time Aktif"
                     dotSync.setBackgroundResource(R.drawable.bg_dot_green)
                 }
                 SyncStatus.SYNCING -> {
                     tvSyncStatus.text = "Sinkronisasi..."
                     dotSync.setBackgroundResource(R.drawable.bg_dot_yellow)
+                    if (btnRefreshSync.animation == null) {
+                        val rotateAnim = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.rotate_sync)
+                        btnRefreshSync.startAnimation(rotateAnim)
+                    }
                 }
                 SyncStatus.OFFLINE -> {
+                    btnRefreshSync.clearAnimation()
                     tvSyncStatus.text = "Tersimpan Lokal"
                     dotSync.setBackgroundResource(R.drawable.bg_dot_gray)
                 }

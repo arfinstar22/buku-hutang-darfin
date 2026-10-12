@@ -25,7 +25,8 @@
             android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Kembali"
-            android:src="@drawable/ic_back" />
+            android:src="@drawable/ic_back"
+            android:stateListAnimator="@animator/press_scale" />
 
         <LinearLayout
             android:id="@+id/layoutNameHeader"
@@ -35,7 +36,8 @@
             android:layout_weight="1"
             android:background="?attr/selectableItemBackground"
             android:orientation="vertical"
-            android:padding="4dp">
+            android:padding="4dp"
+            android:stateListAnimator="@animator/press_scale">
 
             <TextView
                 android:id="@+id/tvDetailTitle"
@@ -66,6 +68,7 @@
             android:contentDescription="Ubah Nama"
             android:padding="10dp"
             android:src="@drawable/ic_edit"
+            android:stateListAnimator="@animator/press_scale"
             app:tint="@color/text_primary" />
     </LinearLayout>
 
@@ -123,6 +126,7 @@
                 android:layout_height="48dp"
                 android:layout_marginTop="16dp"
                 android:backgroundTint="@color/paid_green"
+                android:stateListAnimator="@animator/press_scale"
                 android:text="✓ Lunaskan Hutang"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
@@ -143,6 +147,7 @@
                     android:layout_width="0dp"
                     android:layout_height="46dp"
                     android:layout_weight="1"
+                    android:stateListAnimator="@animator/press_scale"
                     android:text="💵 Catat Cicil"
                     android:textAllCaps="false"
                     android:textColor="@color/paid_green"
@@ -159,6 +164,7 @@
                     android:layout_height="46dp"
                     android:layout_marginStart="8dp"
                     android:layout_weight="1"
+                    android:stateListAnimator="@animator/press_scale"
                     android:text="➕ Tambah Hutang"
                     android:textAllCaps="false"
                     android:textColor="@color/primary_dark"
@@ -191,6 +197,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
+        android:layoutAnimation="@anim/layout_cascade_controller"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:paddingBottom="24dp" />

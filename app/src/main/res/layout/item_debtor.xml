@@ -7,7 +7,10 @@
     android:layout_marginTop="2dp"
     android:layout_marginEnd="2dp"
     android:layout_marginBottom="2dp"
+    android:clickable="true"
+    android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
+    android:stateListAnimator="@animator/press_scale"
     app:cardBackgroundColor="@color/card_surface"
     app:cardCornerRadius="12dp"
     app:cardElevation="2dp">
@@ -96,6 +99,15 @@
                 android:textSize="13sp"
                 android:textStyle="bold" />
         </LinearLayout>
+
+        <!-- Subtle iOS Chevron -->
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_marginStart="6dp"
+            android:contentDescription="Detail"
+            android:src="@drawable/ic_chevron_right"
+            app:tint="@color/text_hint" />
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

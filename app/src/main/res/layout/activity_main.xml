@@ -95,9 +95,12 @@
                         android:layout_width="34dp"
                         android:layout_height="34dp"
                         android:background="@drawable/bg_icon_button_translucent"
+                        android:clickable="true"
                         android:contentDescription="Refresh Sync"
+                        android:focusable="true"
                         android:padding="7dp"
                         android:src="@drawable/ic_sync"
+                        android:stateListAnimator="@animator/press_scale"
                         app:tint="@color/white" />
 
                     <!-- Cloud Settings Button -->
@@ -107,9 +110,12 @@
                         android:layout_height="34dp"
                         android:layout_marginStart="6dp"
                         android:background="@drawable/bg_icon_button_translucent"
+                        android:clickable="true"
                         android:contentDescription="Cloud Settings"
+                        android:focusable="true"
                         android:padding="7dp"
                         android:src="@drawable/ic_settings"
+                        android:stateListAnimator="@animator/press_scale"
                         app:tint="@color/white" />
                 </LinearLayout>
             </LinearLayout>
@@ -235,7 +241,7 @@
                 android:layout_width="16dp"
                 android:layout_height="16dp"
                 android:contentDescription="Search"
-                android:src="@drawable/ic_person"
+                android:src="@drawable/ic_search"
                 app:tint="@color/text_hint" />
 
             <EditText
@@ -272,9 +278,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="26dp"
                     android:background="@drawable/bg_chip_selected"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
+                    android:stateListAnimator="@animator/press_scale"
                     android:text="Semua"
                     android:textColor="@color/white"
                     android:textSize="12sp"
@@ -286,9 +295,12 @@
                     android:layout_height="26dp"
                     android:layout_marginStart="6dp"
                     android:background="@drawable/bg_chip_unselected"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
+                    android:stateListAnimator="@animator/press_scale"
                     android:text="Belum Lunas"
                     android:textColor="@color/text_primary"
                     android:textSize="12sp"
@@ -300,9 +312,12 @@
                     android:layout_height="26dp"
                     android:layout_marginStart="6dp"
                     android:background="@drawable/bg_chip_unselected"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
+                    android:stateListAnimator="@animator/press_scale"
                     android:text="Lunas"
                     android:textColor="@color/text_primary"
                     android:textSize="12sp"
@@ -324,6 +339,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
+                android:layoutAnimation="@anim/layout_cascade_controller"
                 android:paddingBottom="90dp" />
 
             <LinearLayout
@@ -374,6 +390,7 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:backgroundTint="@color/primary"
+        android:stateListAnimator="@animator/press_scale"
         android:text="@string/add_debt_button"
         android:textColor="@color/white"
         android:textSize="15sp"

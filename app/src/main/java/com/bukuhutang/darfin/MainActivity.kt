@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity(), SyncListener {
         super.onResume()
         loadData()
         CloudSyncManager.startRealtimeSync(this)
-        CloudSyncManager.syncNow(this)
+        CloudSyncManager.syncNow(this, forceFullSync = true)
     }
 
     override fun onPause() {

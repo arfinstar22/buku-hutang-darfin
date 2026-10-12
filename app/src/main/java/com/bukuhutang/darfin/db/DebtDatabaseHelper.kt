@@ -122,18 +122,43 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         }
         cursor.close()
 
-        val newDebt = when (parsed.type) {
-            DebtType.DEBT -> currentDebt + parsed.amount
-            DebtType.PAYMENT -> maxOf(0L, currentDebt - parsed.amount)
-            DebtType.SETTLED -> if (parsed.amount > 0L) maxOf(0L, currentDebt - parsed.amount) else 0L
+        val isSettled = parsed.type == DebtType.SETTLED
+        val rawKeyword = if (isSettled) {
+            parsed.note.replace(Regex("(?i)\\b(lunas|selesai|clear)\\b|[()]"), "").trim()
+        } else ""
+
+        val matchedDebt = if (contactId != -1L && rawKeyword.isNotEmpty()) {
+            findUnpaidDebtForKeyword(contactId, rawKeyword)
+        } else 0L
+
+        val amountToApply = when {
+            isSettled && parsed.amount > 0L -> parsed.amount
+            isSettled && rawKeyword.isNotEmpty() && matchedDebt > 0L -> matchedDebt
+            isSettled && rawKeyword.isNotEmpty() -> 0L
+            isSettled -> currentDebt
+            else -> parsed.amount
         }
 
-        val noteText = parsed.note.ifEmpty {
-            when (parsed.type) {
-                DebtType.DEBT -> "Catatan hutang"
-                DebtType.PAYMENT -> "Pembayaran cicil"
-                DebtType.SETTLED -> "Lunas"
+        val newDebt = when (parsed.type) {
+            DebtType.DEBT -> currentDebt + amountToApply
+            DebtType.PAYMENT -> maxOf(0L, currentDebt - amountToApply)
+            DebtType.SETTLED -> {
+                if (rawKeyword.isNotEmpty() && matchedDebt > 0L) {
+                    maxOf(0L, currentDebt - matchedDebt)
+                } else if (rawKeyword.isEmpty()) {
+                    0L
+                } else {
+                    currentDebt
+                }
             }
+        }
+
+        val noteText = when {
+            isSettled && rawKeyword.isNotEmpty() -> "Pelunasan $rawKeyword"
+            isSettled -> "Pelunasan Total"
+            parsed.note.isNotEmpty() -> parsed.note
+            parsed.type == DebtType.PAYMENT -> "Pembayaran cicil"
+            else -> "Catatan hutang"
         }
 
         val now = System.currentTimeMillis()
@@ -159,12 +184,18 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
             db.update(TABLE_CONTACTS, cv, "$COL_CONTACT_ID = ?", arrayOf(contactId.toString()))
         }
 
-        val txAmount = if (parsed.type == DebtType.SETTLED && parsed.amount == 0L) currentDebt else parsed.amount
+        val txAmount = if (parsed.type == DebtType.SETTLED) amountToApply else parsed.amount
+        val txType = if (isSettled && rawKeyword.isNotEmpty() && newDebt > 0L) {
+            DebtType.PAYMENT.name
+        } else {
+            parsed.type.name
+        }
+
         val txCv = ContentValues().apply {
             put(COL_TX_UUID, txUuid)
             put(COL_TX_CONTACT_ID, contactId)
             put(COL_TX_AMOUNT, txAmount)
-            put(COL_TX_TYPE, parsed.type.name)
+            put(COL_TX_TYPE, txType)
             put(COL_TX_NOTE, noteText)
             put(COL_TX_DATE, dateStr)
             put(COL_TX_TIMESTAMP, now)
@@ -324,6 +355,98 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
             db.endTransaction()
         }
         return canonicalKey
+    }
+
+    fun findUnpaidDebtForKeyword(contactId: Long, keyword: String): Long {
+        val cleanKey = keyword.trim().lowercase(Locale.ROOT)
+        if (cleanKey.isEmpty()) return 0L
+
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT $COL_TX_AMOUNT, $COL_TX_TYPE, $COL_TX_NOTE FROM $TABLE_TRANSACTIONS WHERE $COL_TX_CONTACT_ID = ? ORDER BY $COL_TX_TIMESTAMP ASC",
+            arrayOf(contactId.toString())
+        )
+
+        var debtForKeyword = 0L
+        var paidForKeyword = 0L
+
+        if (cursor.moveToFirst()) {
+            do {
+                val amount = cursor.getLong(0)
+                val typeStr = cursor.getString(1)
+                val note = cursor.getString(2)?.lowercase(Locale.ROOT) ?: ""
+
+                if (note.contains(cleanKey)) {
+                    val type = DebtType.fromString(typeStr)
+                    if (type == DebtType.DEBT) {
+                        debtForKeyword += amount
+                    } else if (type == DebtType.PAYMENT || type == DebtType.SETTLED) {
+                        paidForKeyword += amount
+                    }
+                }
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+
+        return maxOf(0L, debtForKeyword - paidForKeyword)
+    }
+
+    fun deleteTransaction(txId: Long, contactId: Long): String? {
+        val db = writableDatabase
+        var txUuid: String? = null
+        val c = db.rawQuery("SELECT $COL_TX_UUID FROM $TABLE_TRANSACTIONS WHERE $COL_TX_ID = ?", arrayOf(txId.toString()))
+        if (c.moveToFirst()) {
+            txUuid = c.getString(0)
+        }
+        c.close()
+
+        db.beginTransaction()
+        try {
+            db.delete(TABLE_TRANSACTIONS, "$COL_TX_ID = ?", arrayOf(txId.toString()))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+
+        recalculateDebtForContact(contactId)
+        return txUuid
+    }
+
+    fun recalculateDebtForContact(contactId: Long) {
+        val db = writableDatabase
+        val txCursor = db.rawQuery(
+            "SELECT $COL_TX_AMOUNT, $COL_TX_TYPE, $COL_TX_NOTE, $COL_TX_TIMESTAMP FROM $TABLE_TRANSACTIONS WHERE $COL_TX_CONTACT_ID = ? ORDER BY $COL_TX_TIMESTAMP ASC",
+            arrayOf(contactId.toString())
+        )
+        var balance = 0L
+        var lastNote = ""
+        var lastTime = 0L
+
+        if (txCursor.moveToFirst()) {
+            do {
+                val amount = txCursor.getLong(0)
+                val typeStr = txCursor.getString(1)
+                val note = txCursor.getString(2) ?: ""
+                val time = txCursor.getLong(3)
+
+                lastNote = note
+                lastTime = time
+
+                when (DebtType.fromString(typeStr)) {
+                    DebtType.DEBT -> balance += amount
+                    DebtType.PAYMENT -> balance = maxOf(0L, balance - amount)
+                    DebtType.SETTLED -> balance = if (amount > 0L) maxOf(0L, balance - amount) else 0L
+                }
+            } while (txCursor.moveToNext())
+        }
+        txCursor.close()
+
+        val cv = ContentValues().apply {
+            put(COL_CONTACT_TOTAL, balance)
+            put(COL_CONTACT_LAST_NOTE, lastNote)
+            put(COL_CONTACT_UPDATED, if (lastTime > 0L) lastTime else System.currentTimeMillis())
+        }
+        db.update(TABLE_CONTACTS, cv, "$COL_CONTACT_ID = ?", arrayOf(contactId.toString()))
     }
 
     fun getAllDebtors(filterMode: Int = 0, query: String = ""): List<Debtor> {
@@ -601,7 +724,7 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                         when (DebtType.fromString(typeStr)) {
                             DebtType.DEBT -> balance += amount
                             DebtType.PAYMENT -> balance = maxOf(0L, balance - amount)
-                            DebtType.SETTLED -> balance = 0L
+                            DebtType.SETTLED -> balance = if (amount > 0L) maxOf(0L, balance - amount) else 0L
                         }
                     } while (txCursor.moveToNext())
                 }

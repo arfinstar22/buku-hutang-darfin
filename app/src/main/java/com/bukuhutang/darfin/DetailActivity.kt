@@ -15,6 +15,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bukuhutang.darfin.adapter.TransactionAdapter
 import com.bukuhutang.darfin.db.DebtDatabaseHelper
+import com.bukuhutang.darfin.db.DebtTransaction
+import com.bukuhutang.darfin.parser.DebtType
 import com.bukuhutang.darfin.parser.SmartDebtParser
 import com.bukuhutang.darfin.sync.CloudSyncManager
 import com.bukuhutang.darfin.sync.SyncListener
@@ -78,7 +80,9 @@ class DetailActivity : AppCompatActivity(), SyncListener {
         btnDeleteContact = findViewById(R.id.btnDeleteContact)
 
         tvDetailTitle.text = contactName
-        txAdapter = TransactionAdapter(emptyList())
+        txAdapter = TransactionAdapter(emptyList()) { tx ->
+            showTransactionOptionsDialog(tx)
+        }
         rvTransactions.layoutManager = LinearLayoutManager(this)
         rvTransactions.adapter = txAdapter
     }
@@ -123,17 +127,17 @@ class DetailActivity : AppCompatActivity(), SyncListener {
         tvDetailRemainingDebt.text = SmartDebtParser.formatRupiah(currentDebt)
 
         val txList = dbHelper.getTransactionsForContact(contactId)
-        tvDetailSubtext.text = "Total riwayat: ${txList.size} kali"
+        tvDetailSubtext.text = "Total riwayat: ${txList.size} kali (ketuk untuk kelola)"
         txAdapter.updateData(txList)
 
         if (currentDebt == 0L) {
             btnSettleDebt.isEnabled = false
-            btnSettleDebt.text = "✓ Hutang Sudah Lunas"
+            btnSettleDebt.text = "✓ Sudah Lunas"
             btnSettleDebt.backgroundTintList = ContextCompat.getColorStateList(this, R.color.text_secondary)
             btnQuickPay.isEnabled = false
         } else {
             btnSettleDebt.isEnabled = true
-            btnSettleDebt.text = "✓ Lunaskan Hutang (${SmartDebtParser.formatRupiah(currentDebt)})"
+            btnSettleDebt.text = "✓ Lunaskan Total (${SmartDebtParser.formatRupiah(currentDebt)})"
             btnSettleDebt.backgroundTintList = ContextCompat.getColorStateList(this, R.color.paid_green)
             btnQuickPay.isEnabled = true
         }
@@ -256,40 +260,84 @@ class DetailActivity : AppCompatActivity(), SyncListener {
                 return@setOnClickListener
             }
 
-            val isLunas = Regex("\\b(lunas|selesai|clear)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
-            val amount = SmartDebtParser.parseRupiahAmount(text)
-            val noteClean = text.replace("(?i)(rp\\.?\\s*)?\\d+[\\d.,]*\\s*(rb|k|ribu|jt|juta)?".toRegex(), "")
-                .replace(Regex("\\b(lunas|selesai|clear|bayar|cicil)\\b", RegexOption.IGNORE_CASE), "")
+            val hasLunas = Regex("\\b(lunas|selesai|clear)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
+            val explicitAmount = SmartDebtParser.parseRupiahAmount(text)
+            val itemKeyword = text.replace("(?i)(rp\\.?\\s*)?\\d+[\\d.,]*\\s*(rb|k|ribu|jt|juta)?".toRegex(), "")
+                .replace(Regex("\\b(lunas|selesai|clear|bayar|cicil|angsur|semua|total)\\b", RegexOption.IGNORE_CASE), "")
                 .trim()
 
-            if (isLunas && amount <= 0L) {
-                val note = if (noteClean.isNotEmpty()) "Pelunasan $noteClean" else "Pelunasan Total"
-                dbHelper.recordPayment(contactId, currentDebt, note)
-                Toast.makeText(this, "Hutang berhasil dilunasi!", Toast.LENGTH_SHORT).show()
+            if (explicitAmount > 0L) {
+                val note = when {
+                    hasLunas && itemKeyword.isNotEmpty() -> "Pelunasan $itemKeyword"
+                    hasLunas -> "Pelunasan cicil"
+                    itemKeyword.isNotEmpty() -> "Cicilan $itemKeyword"
+                    else -> "Pembayaran cicil"
+                }
+                dbHelper.recordPayment(contactId, explicitAmount, note)
+                Toast.makeText(this, "Pembayaran ${SmartDebtParser.formatRupiah(explicitAmount)} dicatat!", Toast.LENGTH_SHORT).show()
                 loadData()
                 dialog.dismiss()
                 CloudSyncManager.syncNow(this)
                 return@setOnClickListener
             }
 
-            if (amount > 0L) {
-                val note = when {
-                    isLunas && noteClean.isNotEmpty() -> "Pelunasan $noteClean"
-                    isLunas -> "Pelunasan cicil"
-                    noteClean.isNotEmpty() -> "Cicilan $noteClean"
-                    else -> "Pembayaran cicil"
+            if (hasLunas) {
+                if (itemKeyword.isNotEmpty()) {
+                    val unpaidForItem = dbHelper.findUnpaidDebtForKeyword(contactId, itemKeyword)
+                    if (unpaidForItem > 0L) {
+                        dbHelper.recordPayment(contactId, unpaidForItem, "Pelunasan $itemKeyword")
+                        Toast.makeText(this, "Hutang '$itemKeyword' (${SmartDebtParser.formatRupiah(unpaidForItem)}) berhasil dilunasi!", Toast.LENGTH_SHORT).show()
+                        loadData()
+                        dialog.dismiss()
+                        CloudSyncManager.syncNow(this)
+                        return@setOnClickListener
+                    } else {
+                        Toast.makeText(
+                            this,
+                            "Tidak ada hutang aktif dengan keterangan '$itemKeyword'. Sisa hutang: ${SmartDebtParser.formatRupiah(currentDebt)}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        return@setOnClickListener
+                    }
+                } else {
+                    dbHelper.recordPayment(contactId, currentDebt, "Pelunasan Total")
+                    Toast.makeText(this, "Seluruh sisa hutang berhasil dilunasi!", Toast.LENGTH_SHORT).show()
+                    loadData()
+                    dialog.dismiss()
+                    CloudSyncManager.syncNow(this)
+                    return@setOnClickListener
                 }
-                dbHelper.recordPayment(contactId, amount, note)
-                Toast.makeText(this, "Pembayaran berhasil dicatat!", Toast.LENGTH_SHORT).show()
-                loadData()
-                dialog.dismiss()
-                CloudSyncManager.syncNow(this)
-            } else {
-                Toast.makeText(this, "Nominal tidak valid. Contoh: 20rb atau bensin lunas", Toast.LENGTH_SHORT).show()
             }
+
+            Toast.makeText(this, "Ketik nominal atau keterangan (contoh: 20rb atau bensin lunas)", Toast.LENGTH_SHORT).show()
         }
 
         dialog.show()
+    }
+
+    private fun showTransactionOptionsDialog(tx: DebtTransaction) {
+        val formattedAmount = SmartDebtParser.formatRupiah(tx.amount)
+        val actionName = when (tx.type) {
+            DebtType.DEBT -> "Hutang (+$formattedAmount)"
+            DebtType.PAYMENT -> "Pembayaran (-$formattedAmount)"
+            DebtType.SETTLED -> "Pelunasan Total ($formattedAmount)"
+            else -> "Transaksi ($formattedAmount)"
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Hapus Transaksi?")
+            .setMessage("Hapus catatan transaksi ini dari riwayat $contactName?\n\n$actionName: \"${tx.note}\"\nTanggal: ${tx.createdAt}\n\nSisa total hutang akan otomatis dihitung ulang.")
+            .setPositiveButton("Hapus") { _, _ ->
+                val txUuid = dbHelper.deleteTransaction(tx.id, contactId)
+                if (txUuid != null) {
+                    CloudSyncManager.deleteRemoteTransaction(this, txUuid)
+                }
+                Toast.makeText(this, "Transaksi dihapus & sisa hutang diperbarui", Toast.LENGTH_SHORT).show()
+                loadData()
+                CloudSyncManager.syncNow(this)
+            }
+            .setNegativeButton("Batal", null)
+            .show()
     }
 
     private fun showAddMoreDebtDialog() {

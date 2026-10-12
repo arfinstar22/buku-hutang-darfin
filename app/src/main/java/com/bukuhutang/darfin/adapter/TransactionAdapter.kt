@@ -12,7 +12,8 @@ import com.bukuhutang.darfin.parser.DebtType
 import com.bukuhutang.darfin.parser.SmartDebtParser
 
 class TransactionAdapter(
-    private var list: List<DebtTransaction>
+    private var list: List<DebtTransaction>,
+    private val onItemClick: ((DebtTransaction) -> Unit)? = null
 ) : RecyclerView.Adapter<TransactionAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -58,6 +59,10 @@ class TransactionAdapter(
                 holder.tvAmount.text = "LUNAS"
                 holder.tvAmount.setTextColor(Color.parseColor("#00880E"))
             }
+        }
+
+        holder.itemView.setOnClickListener {
+            onItemClick?.invoke(item)
         }
     }
 

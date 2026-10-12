@@ -257,6 +257,30 @@ object CloudSyncManager {
         }
     }
 
+    fun deleteRemoteTransaction(context: Context, uuid: String) {
+        executor.execute {
+            try {
+                val baseUrl = getSupabaseUrl(context)
+                val apiKey = getSupabaseKey(context)
+                val syncSecret = getSyncSecret(context)
+                val deleteUrl = URL("$baseUrl/rest/v1/transactions?uuid=eq.$uuid")
+                val conn = (deleteUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "DELETE"
+                    connectTimeout = 5000
+                    readTimeout = 5000
+                    setRequestProperty("apikey", apiKey)
+                    setRequestProperty("Authorization", "Bearer $apiKey")
+                    setRequestProperty("x-sync-secret", syncSecret)
+                }
+                val code = conn.responseCode
+                Log.d(TAG, "Delete remote transaction $uuid status: $code")
+                conn.disconnect()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete remote transaction: ${e.message}")
+            }
+        }
+    }
+
     private fun notifyState(status: SyncStatus, msg: String) {
         mainHandler.post {
             for (listener in listeners) {

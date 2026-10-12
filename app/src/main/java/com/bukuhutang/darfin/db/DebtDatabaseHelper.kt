@@ -48,7 +48,7 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
 
     companion object {
         private const val DATABASE_NAME = "buku_hutang_darfin.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
 
         const val TABLE_CONTACTS = "contacts"
         const val COL_CONTACT_ID = "id"
@@ -68,6 +68,13 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         const val COL_TX_DATE = "created_at"
         const val COL_TX_TIMESTAMP = "tx_timestamp"
         const val COL_TX_SYNC_STATUS = "sync_status" // 0: pending, 1: synced
+
+        const val TABLE_DELETED_CONTACTS = "deleted_contacts"
+        const val COL_DELETED_KEY = "canonical_key"
+        const val COL_DELETED_AT = "deleted_at"
+
+        const val TABLE_DELETED_TRANSACTIONS = "deleted_transactions"
+        const val COL_DELETED_TX_UUID = "uuid"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -96,6 +103,21 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                 FOREIGN KEY($COL_TX_CONTACT_ID) REFERENCES $TABLE_CONTACTS($COL_CONTACT_ID)
             )
         """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS $TABLE_DELETED_CONTACTS (
+                $COL_DELETED_KEY TEXT PRIMARY KEY,
+                $COL_DELETED_AT INTEGER NOT NULL
+            )
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS $TABLE_DELETED_TRANSACTIONS (
+                $COL_DELETED_TX_UUID TEXT PRIMARY KEY,
+                $COL_DELETED_KEY TEXT,
+                $COL_DELETED_AT INTEGER NOT NULL
+            )
+        """.trimIndent())
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -105,6 +127,20 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                 db.execSQL("ALTER TABLE $TABLE_TRANSACTIONS ADD COLUMN $COL_TX_SYNC_STATUS INTEGER DEFAULT 0")
             } catch (_: Exception) {}
         }
+        if (oldVersion < 3) {
+            try {
+                db.execSQL("CREATE TABLE IF NOT EXISTS $TABLE_DELETED_CONTACTS ($COL_DELETED_KEY TEXT PRIMARY KEY, $COL_DELETED_AT INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS $TABLE_DELETED_TRANSACTIONS ($COL_DELETED_TX_UUID TEXT PRIMARY KEY, $COL_DELETED_KEY TEXT, $COL_DELETED_AT INTEGER NOT NULL)")
+            } catch (_: Exception) {}
+        }
+    }
+
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+        try {
+            db.execSQL("CREATE TABLE IF NOT EXISTS $TABLE_DELETED_CONTACTS ($COL_DELETED_KEY TEXT PRIMARY KEY, $COL_DELETED_AT INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS $TABLE_DELETED_TRANSACTIONS ($COL_DELETED_TX_UUID TEXT PRIMARY KEY, $COL_DELETED_KEY TEXT, $COL_DELETED_AT INTEGER NOT NULL)")
+        } catch (_: Exception) {}
     }
 
     fun processMessageInput(text: String): Boolean {
@@ -112,6 +148,9 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         val db = writableDatabase
 
         val key = parsed.canonicalKey
+        try {
+            db.delete(TABLE_DELETED_CONTACTS, "$COL_DELETED_KEY = ?", arrayOf(key))
+        } catch (_: Exception) {}
         var contactId: Long = -1
         var currentDebt: Long = 0
 
@@ -313,6 +352,10 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
 
         db.beginTransaction()
         try {
+            try {
+                db.delete(TABLE_DELETED_CONTACTS, "$COL_DELETED_KEY = ?", arrayOf(newKey))
+            } catch (_: Exception) {}
+
             val cv = ContentValues().apply {
                 put(COL_CONTACT_NAME, cleanName)
                 put(COL_CONTACT_KEY, newKey)
@@ -336,6 +379,7 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
     fun deleteContact(contactId: Long): String? {
         val db = writableDatabase
         var canonicalKey: String? = null
+        val txUuids = mutableListOf<String>()
 
         val cursor = db.rawQuery(
             "SELECT $COL_CONTACT_KEY FROM $TABLE_CONTACTS WHERE $COL_CONTACT_ID = ?",
@@ -346,10 +390,54 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         }
         cursor.close()
 
+        if (canonicalKey == null) return null
+
+        val txCursor = db.rawQuery("""
+            SELECT t.$COL_TX_UUID FROM $TABLE_TRANSACTIONS t
+            JOIN $TABLE_CONTACTS c ON t.$COL_TX_CONTACT_ID = c.$COL_CONTACT_ID
+            WHERE c.$COL_CONTACT_KEY = ?
+        """.trimIndent(), arrayOf(canonicalKey))
+        if (txCursor.moveToFirst()) {
+            do {
+                val u = txCursor.getString(0)
+                if (!u.isNullOrEmpty()) txUuids.add(u)
+            } while (txCursor.moveToNext())
+        }
+        txCursor.close()
+
+        val now = System.currentTimeMillis()
+
         db.beginTransaction()
         try {
-            db.delete(TABLE_TRANSACTIONS, "$COL_TX_CONTACT_ID = ?", arrayOf(contactId.toString()))
-            db.delete(TABLE_CONTACTS, "$COL_CONTACT_ID = ?", arrayOf(contactId.toString()))
+            val cvDeleted = ContentValues().apply {
+                put(COL_DELETED_KEY, canonicalKey)
+                put(COL_DELETED_AT, now)
+            }
+            db.insertWithOnConflict(TABLE_DELETED_CONTACTS, null, cvDeleted, SQLiteDatabase.CONFLICT_REPLACE)
+
+            for (uuid in txUuids) {
+                val cvDelTx = ContentValues().apply {
+                    put(COL_DELETED_TX_UUID, uuid)
+                    put(COL_DELETED_KEY, canonicalKey)
+                    put(COL_DELETED_AT, now)
+                }
+                db.insertWithOnConflict(TABLE_DELETED_TRANSACTIONS, null, cvDelTx, SQLiteDatabase.CONFLICT_REPLACE)
+            }
+
+            val cIdsCursor = db.rawQuery("SELECT $COL_CONTACT_ID FROM $TABLE_CONTACTS WHERE $COL_CONTACT_KEY = ?", arrayOf(canonicalKey))
+            val cIds = mutableListOf<Long>()
+            if (cIdsCursor.moveToFirst()) {
+                do {
+                    cIds.add(cIdsCursor.getLong(0))
+                } while (cIdsCursor.moveToNext())
+            }
+            cIdsCursor.close()
+
+            for (cId in cIds) {
+                db.delete(TABLE_TRANSACTIONS, "$COL_TX_CONTACT_ID = ?", arrayOf(cId.toString()))
+            }
+            db.delete(TABLE_CONTACTS, "$COL_CONTACT_KEY = ?", arrayOf(canonicalKey))
+
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -394,14 +482,33 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
     fun deleteTransaction(txId: Long, contactId: Long): String? {
         val db = writableDatabase
         var txUuid: String? = null
+        var canonicalKey: String? = null
+
         val c = db.rawQuery("SELECT $COL_TX_UUID FROM $TABLE_TRANSACTIONS WHERE $COL_TX_ID = ?", arrayOf(txId.toString()))
         if (c.moveToFirst()) {
             txUuid = c.getString(0)
         }
         c.close()
 
+        val cContact = db.rawQuery("SELECT $COL_CONTACT_KEY FROM $TABLE_CONTACTS WHERE $COL_CONTACT_ID = ?", arrayOf(contactId.toString()))
+        if (cContact.moveToFirst()) {
+            canonicalKey = cContact.getString(0)
+        }
+        cContact.close()
+
+        val now = System.currentTimeMillis()
+
         db.beginTransaction()
         try {
+            if (!txUuid.isNullOrEmpty()) {
+                val cvDel = ContentValues().apply {
+                    put(COL_DELETED_TX_UUID, txUuid)
+                    put(COL_DELETED_KEY, canonicalKey ?: "")
+                    put(COL_DELETED_AT, now)
+                }
+                db.insertWithOnConflict(TABLE_DELETED_TRANSACTIONS, null, cvDel, SQLiteDatabase.CONFLICT_REPLACE)
+            }
+
             db.delete(TABLE_TRANSACTIONS, "$COL_TX_ID = ?", arrayOf(txId.toString()))
             db.setTransactionSuccessful()
         } finally {
@@ -410,6 +517,50 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
 
         recalculateDebtForContact(contactId)
         return txUuid
+    }
+
+    fun isContactDeleted(canonicalKey: String): Boolean {
+        if (canonicalKey.isEmpty()) return false
+        val db = readableDatabase
+        val c = db.rawQuery("SELECT 1 FROM $TABLE_DELETED_CONTACTS WHERE $COL_DELETED_KEY = ?", arrayOf(canonicalKey))
+        val deleted = c.moveToFirst()
+        c.close()
+        return deleted
+    }
+
+    fun isTransactionDeleted(uuid: String): Boolean {
+        if (uuid.isEmpty()) return false
+        val db = readableDatabase
+        val c = db.rawQuery("SELECT 1 FROM $TABLE_DELETED_TRANSACTIONS WHERE $COL_DELETED_TX_UUID = ?", arrayOf(uuid))
+        val deleted = c.moveToFirst()
+        c.close()
+        return deleted
+    }
+
+    fun getDeletedContactKeys(): List<String> {
+        val list = mutableListOf<String>()
+        val db = readableDatabase
+        val c = db.rawQuery("SELECT $COL_DELETED_KEY FROM $TABLE_DELETED_CONTACTS", null)
+        if (c.moveToFirst()) {
+            do {
+                list.add(c.getString(0))
+            } while (c.moveToNext())
+        }
+        c.close()
+        return list
+    }
+
+    fun getDeletedTransactionUuids(): List<String> {
+        val list = mutableListOf<String>()
+        val db = readableDatabase
+        val c = db.rawQuery("SELECT $COL_DELETED_TX_UUID FROM $TABLE_DELETED_TRANSACTIONS", null)
+        if (c.moveToFirst()) {
+            do {
+                list.add(c.getString(0))
+            } while (c.moveToNext())
+        }
+        c.close()
+        return list
     }
 
     fun recalculateDebtForContact(contactId: Long) {
@@ -457,6 +608,7 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                    c.$COL_CONTACT_LAST_NOTE, c.$COL_CONTACT_UPDATED,
                    (SELECT COUNT(*) FROM $TABLE_TRANSACTIONS t WHERE t.$COL_TX_CONTACT_ID = c.$COL_CONTACT_ID) as tx_count
             FROM $TABLE_CONTACTS c 
+            WHERE c.$COL_CONTACT_KEY NOT IN (SELECT $COL_DELETED_KEY FROM $TABLE_DELETED_CONTACTS)
             ORDER BY c.$COL_CONTACT_TOTAL DESC, c.$COL_CONTACT_UPDATED DESC
         """.trimIndent(), null)
 
@@ -495,7 +647,7 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
 
     fun getGrandTotalDebt(): Long {
         val db = readableDatabase
-        val cursor = db.rawQuery("SELECT SUM($COL_CONTACT_TOTAL) FROM $TABLE_CONTACTS WHERE $COL_CONTACT_TOTAL > 0", null)
+        val cursor = db.rawQuery("SELECT SUM($COL_CONTACT_TOTAL) FROM $TABLE_CONTACTS WHERE $COL_CONTACT_TOTAL > 0 AND $COL_CONTACT_KEY NOT IN (SELECT $COL_DELETED_KEY FROM $TABLE_DELETED_CONTACTS)", null)
         var total = 0L
         if (cursor.moveToFirst()) {
             total = cursor.getLong(0)
@@ -509,7 +661,7 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         var total = 0
         var unpaid = 0
         var paid = 0
-        val cursor = db.rawQuery("SELECT $COL_CONTACT_TOTAL FROM $TABLE_CONTACTS", null)
+        val cursor = db.rawQuery("SELECT $COL_CONTACT_TOTAL FROM $TABLE_CONTACTS WHERE $COL_CONTACT_KEY NOT IN (SELECT $COL_DELETED_KEY FROM $TABLE_DELETED_CONTACTS)", null)
         if (cursor.moveToFirst()) {
             do {
                 total++
@@ -638,6 +790,15 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         db.beginTransaction()
         try {
             for (tx in remoteList) {
+                // Ignore remote transaction if contact was deleted locally
+                if (isContactDeleted(tx.canonicalKey)) {
+                    continue
+                }
+                // Ignore remote transaction if transaction was deleted locally
+                if (isTransactionDeleted(tx.uuid)) {
+                    continue
+                }
+
                 // Check if uuid already exists
                 val checkCursor = db.rawQuery("SELECT $COL_TX_ID FROM $TABLE_TRANSACTIONS WHERE $COL_TX_UUID = ?", arrayOf(tx.uuid))
                 val exists = checkCursor.moveToFirst()

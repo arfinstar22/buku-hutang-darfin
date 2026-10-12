@@ -119,6 +119,42 @@ object CloudSyncManager {
                 val apiKey = getSupabaseKey(ctx)
                 val syncSecret = getSyncSecret(ctx)
 
+                // 0. PURGE: Delete remote items that were marked as deleted locally
+                val deletedKeys = dbHelper.getDeletedContactKeys()
+                for (dKey in deletedKeys) {
+                    try {
+                        val encoded = java.net.URLEncoder.encode(dKey, "UTF-8")
+                        val dUrl = URL("$baseUrl/rest/v1/transactions?canonical_key=eq.$encoded")
+                        val dConn = (dUrl.openConnection() as HttpURLConnection).apply {
+                            requestMethod = "DELETE"
+                            connectTimeout = 4000
+                            readTimeout = 4000
+                            setRequestProperty("apikey", apiKey)
+                            setRequestProperty("Authorization", "Bearer $apiKey")
+                            setRequestProperty("x-sync-secret", syncSecret)
+                        }
+                        dConn.responseCode
+                        dConn.disconnect()
+                    } catch (_: Exception) {}
+                }
+
+                val deletedUuids = dbHelper.getDeletedTransactionUuids()
+                for (dUuid in deletedUuids) {
+                    try {
+                        val dUrl = URL("$baseUrl/rest/v1/transactions?uuid=eq.$dUuid")
+                        val dConn = (dUrl.openConnection() as HttpURLConnection).apply {
+                            requestMethod = "DELETE"
+                            connectTimeout = 4000
+                            readTimeout = 4000
+                            setRequestProperty("apikey", apiKey)
+                            setRequestProperty("Authorization", "Bearer $apiKey")
+                            setRequestProperty("x-sync-secret", syncSecret)
+                        }
+                        dConn.responseCode
+                        dConn.disconnect()
+                    } catch (_: Exception) {}
+                }
+
                 // 1. PUSH: Upload pending local transactions to Supabase PostgREST
                 val pendingList = dbHelper.getPendingSyncTransactions()
                 if (pendingList.isNotEmpty()) {
@@ -239,7 +275,8 @@ object CloudSyncManager {
                 val baseUrl = getSupabaseUrl(context)
                 val apiKey = getSupabaseKey(context)
                 val syncSecret = getSyncSecret(context)
-                val deleteUrl = URL("$baseUrl/rest/v1/transactions?canonical_key=eq.$canonicalKey")
+                val encodedKey = java.net.URLEncoder.encode(canonicalKey, "UTF-8")
+                val deleteUrl = URL("$baseUrl/rest/v1/transactions?canonical_key=eq.$encodedKey")
                 val conn = (deleteUrl.openConnection() as HttpURLConnection).apply {
                     requestMethod = "DELETE"
                     connectTimeout = 5000

@@ -448,9 +448,10 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
 
         db.beginTransaction()
         try {
+            val safeName = if (!contactName.isNullOrBlank()) contactName else canonicalKey
             val cvDeleted = ContentValues().apply {
                 put(COL_DELETED_KEY, canonicalKey)
-                put(COL_DELETED_NAME, contactName ?: "")
+                put(COL_DELETED_NAME, safeName)
                 put(COL_DELETED_AT, now)
                 put(COL_DELETED_SYNC_STATUS, 0)
             }
@@ -1008,14 +1009,14 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
         try {
             for (tx in remoteList) {
                 // 1. Check if this is a DELETE tombstone from another device!
-                if (tx.type == "DELETE_CONTACT") {
+                if ((tx.type == "SETTLED" && tx.note == "DELETED_CONTACT") || tx.type == "DELETE_CONTACT") {
                     val changed = markContactDeletedLocally(tx.canonicalKey, tx.debtorName, tx.timestamp)
                     if (changed) newCount++
                     continue
                 }
 
-                if (tx.type == "DELETE_TRANSACTION") {
-                    val targetUuid = tx.note
+                if ((tx.type == "SETTLED" && tx.note.startsWith("DELETED_TX:")) || tx.type == "DELETE_TRANSACTION") {
+                    val targetUuid = if (tx.note.startsWith("DELETED_TX:")) tx.note.removePrefix("DELETED_TX:") else tx.note
                     val changed = markTransactionDeletedLocally(targetUuid, tx.canonicalKey, tx.timestamp)
                     if (changed) newCount++
                     continue
@@ -1061,6 +1062,11 @@ class DebtDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_
                             put(COL_CONTACT_UPDATED, tx.timestamp)
                         }
                         contactId = db.insert(TABLE_CONTACTS, null, cCv)
+                    } else if (tx.debtorName.isNotBlank()) {
+                        val cCvUpdate = ContentValues().apply {
+                            put(COL_CONTACT_NAME, tx.debtorName)
+                        }
+                        db.update(TABLE_CONTACTS, cCvUpdate, "$COL_CONTACT_ID = ?", arrayOf(contactId.toString()))
                     }
 
                     // Insert transaction as already synced

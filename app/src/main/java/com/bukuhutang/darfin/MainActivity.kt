@@ -163,7 +163,7 @@ class MainActivity : AppCompatActivity(), SyncListener {
             val rotateAnim = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.rotate_sync)
             btnRefreshSync.startAnimation(rotateAnim)
             Toast.makeText(this, "Menyinkronkan data...", Toast.LENGTH_SHORT).show()
-            CloudSyncManager.syncNow(this) { success, newCount ->
+            CloudSyncManager.syncNow(this, forceFullSync = true) { success, newCount ->
                 btnRefreshSync.clearAnimation()
                 if (success) {
                     Toast.makeText(this, "Sinkronisasi berhasil! ($newCount data baru)", Toast.LENGTH_SHORT).show()

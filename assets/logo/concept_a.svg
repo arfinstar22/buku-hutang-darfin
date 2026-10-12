@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Concept A: Modern Emerald Ledger with Gold Seal and Rupiah Monogram -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A6C2F"/>
+      <stop offset="100%" stop-color="#043816"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD54F"/>
+      <stop offset="100%" stop-color="#FF8F00"/>
+    </linearGradient>
+    <linearGradient id="bookGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F0F4F1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Squircle / Shield -->
+  <rect x="12" y="12" width="232" height="232" rx="54" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Inner Border / Ring for Polish -->
+  <rect x="16" y="16" width="224" height="224" rx="50" fill="none" stroke="#22A455" stroke-width="2" opacity="0.4"/>
+
+  <!-- The Hardcover Ledger Book Base (Shadow) -->
+  <rect x="52" y="46" width="152" height="172" rx="20" fill="#02210D" opacity="0.35"/>
+  
+  <!-- The Hardcover Ledger Spine (Emerald Dark) -->
+  <rect x="50" y="42" width="156" height="172" rx="20" fill="#094A22"/>
+  
+  <!-- Book Spine Stitching / Crease -->
+  <path d="M78 42 L78 214" stroke="#053316" stroke-width="3"/>
+
+  <!-- Front Cover / Pages Body -->
+  <rect x="74" y="42" width="132" height="172" rx="18" fill="url(#bookGrad)"/>
+
+  <!-- Golden Bookmark Ribbon Hanging from Top -->
+  <path d="M164 42 L164 96 L178 84 L192 96 L192 42 Z" fill="url(#goldGrad)"/>
+
+  <!-- Horizontal Ledger Lines on Cover -->
+  <rect x="96" y="72" width="56" height="6" rx="3" fill="#D0DDD2"/>
+  <rect x="96" y="88" width="40" height="6" rx="3" fill="#D0DDD2"/>
+
+  <!-- Center Golden Medallion (The Wealth / Debt Coin) -->
+  <circle cx="140" cy="144" r="38" fill="#E67E00"/>
+  <circle cx="140" cy="142" r="36" fill="url(#goldGrad)"/>
+  <circle cx="140" cy="142" r="30" fill="none" stroke="#FFF3B0" stroke-width="2" opacity="0.8"/>
+
+  <!-- Bold Rp Monogram on Coin -->
+  <!-- Letter R -->
+  <path d="M123 129 H136 C140.4 129 144 132.6 144 137 C144 141.4 140.4 145 136 145 H128.5 V155 H123 Z M128.5 134 V140 H135.5 C137.2 140 138.5 138.7 138.5 137 C138.5 135.3 137.2 134 135.5 134 Z" fill="#4E2B00"/>
+  <path d="M136 144 L144 155 H138 L131.5 145 Z" fill="#4E2B00"/>
+  
+  <!-- Small lowercase p -->
+  <path d="M147 137 H152 V139.5 C153.2 137.8 155.1 136.8 157.2 136.8 C160.8 136.8 163.5 139.5 163.5 143.5 C163.5 147.5 160.8 150.2 157.2 150.2 C155.1 150.2 153.2 149.2 152 147.5 V158 H147 Z M152 143.5 C152 146.1 153.8 147.6 155.5 147.6 C157.2 147.6 158.5 146.1 158.5 143.5 C158.5 140.9 157.2 139.4 155.5 139.4 C153.8 139.4 152 140.9 152 143.5 Z" fill="#4E2B00"/>
+</svg>

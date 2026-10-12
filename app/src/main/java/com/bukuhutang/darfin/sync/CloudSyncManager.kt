@@ -155,10 +155,16 @@ object CloudSyncManager {
                     } catch (_: Exception) {}
                 }
 
-                // 1. PUSH: Upload pending local transactions to Supabase PostgREST
+                // 1. PUSH: Upload pending local transactions and deletion tombstones to Supabase
                 val pendingList = dbHelper.getPendingSyncTransactions()
-                if (pendingList.isNotEmpty()) {
+                val pendingDeletedContacts = dbHelper.getPendingDeletedContacts()
+                val pendingDeletedTxs = dbHelper.getPendingDeletedTransactions()
+
+                val hasPending = pendingList.isNotEmpty() || pendingDeletedContacts.isNotEmpty() || pendingDeletedTxs.isNotEmpty()
+                if (hasPending) {
                     val uploadArray = JSONArray()
+                    val dateFormat = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
+
                     for (item in pendingList) {
                         val obj = JSONObject().apply {
                             put("uuid", item.uuid)
@@ -169,6 +175,34 @@ object CloudSyncManager {
                             put("note", item.note)
                             put("created_at", item.createdAt)
                             put("timestamp", item.timestamp)
+                        }
+                        uploadArray.put(obj)
+                    }
+
+                    for (item in pendingDeletedContacts) {
+                        val obj = JSONObject().apply {
+                            put("uuid", java.util.UUID.randomUUID().toString())
+                            put("debtor_name", item.name)
+                            put("canonical_key", item.canonicalKey)
+                            put("amount", 0L)
+                            put("type", "DELETE_CONTACT")
+                            put("note", "DELETED")
+                            put("created_at", dateFormat.format(java.util.Date(item.deletedAt)))
+                            put("timestamp", item.deletedAt)
+                        }
+                        uploadArray.put(obj)
+                    }
+
+                    for (item in pendingDeletedTxs) {
+                        val obj = JSONObject().apply {
+                            put("uuid", java.util.UUID.randomUUID().toString())
+                            put("debtor_name", "")
+                            put("canonical_key", item.canonicalKey)
+                            put("amount", 0L)
+                            put("type", "DELETE_TRANSACTION")
+                            put("note", item.uuid)
+                            put("created_at", dateFormat.format(java.util.Date(item.deletedAt)))
+                            put("timestamp", item.deletedAt)
                         }
                         uploadArray.put(obj)
                     }
@@ -194,17 +228,67 @@ object CloudSyncManager {
 
                     val postCode = postConn.responseCode
                     if (postCode in 200..299) {
-                        val uploadedUuids = pendingList.map { it.uuid }
-                        dbHelper.markTransactionsSynced(uploadedUuids)
+                        if (pendingList.isNotEmpty()) {
+                            dbHelper.markTransactionsSynced(pendingList.map { it.uuid })
+                        }
+                        if (pendingDeletedContacts.isNotEmpty()) {
+                            dbHelper.markDeletedContactsSynced(pendingDeletedContacts.map { it.canonicalKey })
+                        }
+                        if (pendingDeletedTxs.isNotEmpty()) {
+                            dbHelper.markDeletedTransactionsSynced(pendingDeletedTxs.map { it.uuid })
+                        }
                     } else {
                         Log.e(TAG, "Post to Supabase failed code: $postCode")
                     }
                     postConn.disconnect()
                 }
 
-                // 2. PULL: Fetch recent transactions from Supabase (Delta Sync)
+                // 2. PULL: Fetch recent tombstones and delta transactions from Supabase
+                val remoteItems = mutableListOf<SyncTransactionDto>()
+
+                // A. PULL: Recent Tombstones (Deletions on other devices)
+                try {
+                    val tombUrl = URL("$baseUrl/rest/v1/transactions?select=*&type=in.(DELETE_CONTACT,DELETE_TRANSACTION)&order=timestamp.desc&limit=50")
+                    val tombConn = (tombUrl.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        connectTimeout = 5000
+                        readTimeout = 5000
+                        setRequestProperty("Accept", "application/json")
+                        setRequestProperty("apikey", apiKey)
+                        setRequestProperty("Authorization", "Bearer $apiKey")
+                        setRequestProperty("x-sync-secret", syncSecret)
+                    }
+                    if (tombConn.responseCode in 200..299) {
+                        val reader = BufferedReader(InputStreamReader(tombConn.inputStream, "UTF-8"))
+                        val sb = StringBuilder()
+                        var line: String?
+                        while (reader.readLine().also { line = it } != null) {
+                            sb.append(line)
+                        }
+                        reader.close()
+                        val arr = JSONArray(sb.toString())
+                        for (i in 0 until arr.length()) {
+                            val obj = arr.getJSONObject(i)
+                            remoteItems.add(
+                                SyncTransactionDto(
+                                    uuid = obj.getString("uuid"),
+                                    debtorName = obj.optString("debtor_name", ""),
+                                    canonicalKey = obj.optString("canonical_key", ""),
+                                    amount = obj.optLong("amount", 0L),
+                                    type = obj.getString("type"),
+                                    note = obj.optString("note", ""),
+                                    createdAt = obj.optString("created_at", ""),
+                                    timestamp = obj.optLong("timestamp", 0L)
+                                )
+                            )
+                        }
+                    }
+                    tombConn.disconnect()
+                } catch (_: Exception) {}
+
+                // B. PULL: Delta transactions
                 val lastTimestamp = dbHelper.getLatestTransactionTimestamp()
-                val minTimestamp = maxOf(0L, lastTimestamp - 60_000L) // 1 minute buffer for clock drift
+                val minTimestamp = maxOf(0L, lastTimestamp - 120_000L) // 2 minutes buffer for clock drift
                 val getUrl = URL("$baseUrl/rest/v1/transactions?select=*&timestamp=gte.$minTimestamp&order=timestamp.asc")
                 val getConn = (getUrl.openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
@@ -227,29 +311,29 @@ object CloudSyncManager {
                     reader.close()
 
                     val remoteArray = JSONArray(sb.toString())
-                    val remoteItems = mutableListOf<SyncTransactionDto>()
-
                     for (i in 0 until remoteArray.length()) {
                         val obj = remoteArray.getJSONObject(i)
                         remoteItems.add(
                             SyncTransactionDto(
                                 uuid = obj.getString("uuid"),
-                                debtorName = obj.getString("debtor_name"),
-                                canonicalKey = obj.getString("canonical_key"),
-                                amount = obj.getLong("amount"),
+                                debtorName = obj.optString("debtor_name", ""),
+                                canonicalKey = obj.optString("canonical_key", ""),
+                                amount = obj.optLong("amount", 0L),
                                 type = obj.getString("type"),
                                 note = obj.optString("note", ""),
-                                createdAt = obj.getString("created_at"),
-                                timestamp = obj.getLong("timestamp")
+                                createdAt = obj.optString("created_at", ""),
+                                timestamp = obj.optLong("timestamp", 0L)
                             )
                         )
                     }
 
-                    newCount = dbHelper.mergeRemoteTransactions(remoteItems)
+                    // Deduplicate by UUID
+                    val uniqueRemoteItems = remoteItems.distinctBy { it.uuid }
+                    newCount = dbHelper.mergeRemoteTransactions(uniqueRemoteItems)
                     success = true
 
                     notifyState(SyncStatus.ONLINE, "Real-time Aktif")
-                    if (newCount > 0 || pendingList.isNotEmpty()) {
+                    if (newCount > 0 || hasPending) {
                         notifyDataUpdated(newCount)
                     }
                 } else {
@@ -292,6 +376,7 @@ object CloudSyncManager {
                 Log.e(TAG, "Failed to delete remote contact: ${e.message}")
             }
         }
+        syncNow(context)
     }
 
     fun deleteRemoteTransaction(context: Context, uuid: String) {
@@ -316,6 +401,7 @@ object CloudSyncManager {
                 Log.e(TAG, "Failed to delete remote transaction: ${e.message}")
             }
         }
+        syncNow(context)
     }
 
     private fun notifyState(status: SyncStatus, msg: String) {

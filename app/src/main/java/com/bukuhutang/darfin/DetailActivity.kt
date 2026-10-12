@@ -122,8 +122,13 @@ class DetailActivity : AppCompatActivity(), SyncListener {
 
         val debtors = dbHelper.getAllDebtors()
         val debtor = debtors.find { it.id == contactId }
+        if (debtor == null) {
+            Toast.makeText(this, "Pelanggan telah dihapus oleh perangkat lain", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
 
-        val currentDebt = debtor?.totalDebt ?: 0L
+        val currentDebt = debtor.totalDebt
         tvDetailRemainingDebt.text = SmartDebtParser.formatRupiah(currentDebt)
 
         val txList = dbHelper.getTransactionsForContact(contactId)
